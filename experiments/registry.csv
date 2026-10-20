@@ -1,0 +1,2 @@
+id,date,purpose,config_path,model,gpu,seed,git_commit,status,wandb_url,key_metrics,gpu_hours,cost_usd,conclusion
+EXP-W01-01-smoke,2026-10-20,W1 冒烟：20 步 GRPO-LoRA 跑通链路并验证 step10 断点续跑,configs/EXP-W01-01-smoke.sh,Qwen2.5-1.5B-Instruct,RTX 4080 16GB,42,,planned,,,,,

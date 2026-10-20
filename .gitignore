@@ -1,0 +1,28 @@
+# --- 不入库的大文件 / 本地状态 ---
+data/*
+!data/README.md
+checkpoints/
+third_party/
+models/
+logs/
+outputs/
+wandb/
+*.safetensors
+*.pt
+*.bin
+*.gguf
+
+# --- 密钥 ---
+.env
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+
+# --- 编辑器/系统 ---
+.DS_Store
+.idea/
+.vscode/
