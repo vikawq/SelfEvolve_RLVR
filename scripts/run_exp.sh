@@ -21,7 +21,16 @@ if [[ ! -f "$CONFIG" ]]; then
   exit 2
 fi
 
-mkdir -p "$REPO_ROOT/logs"
+mkdir -p "$REPO_ROOT/logs/ray" "$HOME/raytmp" "$HOME/tmp"
+# 本机 / 分区只有 18G：缓存与 Ray 临时目录都放大盘
+# 注意：RAY_TMPDIR 不能太深 —— Ray 的 /dev/shm 与 plasma socket 是 AF_UNIX 路径，上限 107 字节
+export TMPDIR=${TMPDIR:-$HOME/tmp}
+export RAY_TMPDIR=${RAY_TMPDIR:-$HOME/raytmp}
+export PIP_CACHE_DIR=${PIP_CACHE_DIR:-$HOME/.cache/pip}
+export TOKENIZERS_PARALLELISM=${TOKENIZERS_PARALLELISM:-false}
+# 16GB 单卡显存碎片多：用可扩展段分配，减少 OOM（torch 官方建议）
+export PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}
+
 LOG="$REPO_ROOT/logs/${EXP_ID}_$(date +%Y%m%d-%H%M%S).log"
 echo "== run $EXP_ID =="
 echo "== log: $LOG =="

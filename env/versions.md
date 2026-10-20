@@ -97,6 +97,26 @@ verl 0.9.1 / vllm 0.24.0 / transformers 5.9.0 / ray 2.59.0 / peft 0.21.2
 
 `train.parquet` 7473 行、`test.parquet` 1319 行，字段见 `docs/data_format.md`。
 
+### 6.4 冒烟实验 EXP-W01-01-smoke（已跑通）
+
+| 项 | 结果 |
+|---|---|
+| 轨迹 | phase1 step 1–10 → `global_step_10`；phase2 `resume_mode=auto` 续跑 step 11–20 → `global_step_20` |
+| 结果 | 两次 launch 均 exit 0，无 OOM |
+| 单步耗时 | 23.2s（`update_actor` 12.3s / `gen` 3.7s / `old_log_prob` 3.5s / `ref` 2.0s / `update_weights` 1.6s） |
+| 吞吐 | ~980 tok/s |
+| 显存 | actor 进程峰值 9.28 GiB allocated / 9.53 GiB reserved；vLLM 进程 ~3.9 GiB |
+| 验证集 acc@1 | step 10 = 0.5550；step 20 = 0.7081（仅冒烟，不作精度结论） |
+| checkpoint | 3.6GB/个；续跑日志含 `Resuming from .../global_step_10` |
+| GPU 时长 | 成功轨迹 ≈0.18 GPU·h；含调试 ≈0.5 GPU·h |
+| 花费 | $0（本地机器） |
+
+关键环境结论（详见 `docs/troubleshooting.md`）：
+- FSDP 必须显式 `model_dtype=bf16`（默认 fp32 会导致 1.5B 模型在 16GB 上 OOM）
+- `trainer.use_v1=False`（v1 在 critic-free GRPO 下读 `values` 字段崩溃）
+- LoRA 同步走 `model.lora.merge=True`（vLLM 0.24 的 `add_lora` 与 verl adapter 路径不兼容）
+- 无 flash-attn：actor/ref 用 SDPA；vLLM rollout 仍用内置 FLASH_ATTN
+
 ## 7. 待办
 
 - 3090 到位后：`HW=3090` 跑 `EXP-W01-02-smoke-3090`，用实测值更新 `configs/hw/3090.env`，并把两卡 profiling 结果并列留档。
