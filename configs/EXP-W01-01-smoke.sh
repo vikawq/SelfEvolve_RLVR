@@ -38,7 +38,10 @@ mkdir -p "$CKPT_DIR"
 
 echo "[$EXP_ID] HW=$HW model=$MODEL_DIR/Qwen2.5-1.5B-Instruct total_steps=$TOTAL_STEPS ckpt=$CKPT_DIR"
 
-# 单卡：关掉官方示例默认的 uv runtime_env，直接用当前 conda 环境的 python
+# 单卡：关掉官方示例默认的 uv runtime_env，直接用当前 conda 环境的 python。
+# 两个非默认开关的原因（详见 docs/troubleshooting.md）：
+#   lora.merge=True   -> vLLM 0.24 的 add_lora 与 verl 0.9.1 的 adapter 增量同步不兼容（§3.5）
+#   use_v1=False      -> v0.9.1 的 v1 trainer 在无 critic 的 GRPO 下硬读 values 字段（§3.6）
 python -m verl.trainer.main_ppo \
   algorithm.adv_estimator=grpo \
   algorithm.use_kl_in_reward=False \

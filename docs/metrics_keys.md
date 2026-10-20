@@ -7,7 +7,7 @@
 
 | key | 含义 | W1 实测 |
 |---|---|---|
-| `critic/score/mean` | 规则判分器给出的得分均值（GSM8K 0/1 准确率） | step 1–10：0.05–0.33 |
+| `critic/score/mean` | 规则判分器给出的得分均值（GSM8K 0/1 准确率） | step 1–10：0.047–0.422（逐步波动大，冒烟样本少） |
 | `critic/score/max` / `min` | 一个 batch 内的最高/最低分 | 1.0 / 0.0 |
 | `critic/rewards/mean` | 加 KL 惩罚前的 token-level reward 统计（本实验 `use_kl_in_reward=False`，与 score 同值） | 同 score |
 | `critic/advantages/mean` | **GRPO 的组内相对优势**（无 critic；沿用了历史 `critic/` 前缀，不要被名字误导） | ±1.5 区间 |
@@ -30,7 +30,7 @@
 
 | key | 含义 | W1 实测 |
 |---|---|---|
-| `actor/kl_loss` | actor 对 ref 的 KL（`low_var_kl`，乘 `kl_loss_coef` 前的原始值） | 0.0025 → 0.02（续跑后上升，仅冒烟，不作结论） |
+| `actor/kl_loss` | actor 对 ref 的 KL（`low_var_kl`，乘 `kl_loss_coef` 前的原始值） | phase1 均值 0.0025（0–0.0073）；phase2 均值 0.020（0.011–0.029），仅冒烟，不作结论 |
 | `actor/kl_coef` | KL 系数 | 0.001 |
 | `actor/entropy` | 策略熵 | 0.38 → 0.34 |
 | `actor/pg_loss` / `actor/loss` | policy gradient loss / 总 loss | — |

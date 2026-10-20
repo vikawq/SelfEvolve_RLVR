@@ -12,7 +12,7 @@
 - [x] `docs/data_format.md`（3 条真实样本 + schema）和 `docs/metrics_keys.md`（按 7 组分类，含实测值）已写好。
 - [x] registry 中有 `EXP-W01-01-smoke` 的完整记录（状态、wandb、指标、GPU 时长、结论）。
 - [x] `reports/week01_summary.md` 已写好（本文件）。
-- [x] 额外完成：`docs/troubleshooting.md` 记录了 **7 类** 环境/版本/上游 bug 差异；`scripts/prepare_data.sh`、`scripts/run_exp.sh` 可重入；`configs/hw/3090.env` 已建（未实测）。
+- [x] 额外完成：`docs/troubleshooting.md` 记录了 6 类环境差异 + 8 个具体故障（含上游 bug 的根因与规避）；`scripts/prepare_data.sh`、`scripts/run_exp.sh` 可重入；`configs/hw/3090.env` 已建（未实测）。
 
 ## 关键结果（附 wandb 链接）
 
