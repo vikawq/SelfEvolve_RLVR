@@ -67,6 +67,16 @@ HW=4080 bash scripts/run_exp.sh EXP-W01-01-smoke
 
 见 `02_AGENT_PROTOCOL.md`。核心目录：`configs/`（实验与硬件档位）、`data/`（不入库）、`src/selfevolve/`（verifier / rewards / challenger / solver / metrics）、`experiments/`（registry）、`reports/`（周报与结果汇总）、`docs/`（数据格式、指标键名、排障）。
 
+## 设计文档
+
+| 文档 | 回答的问题 |
+|---|---|
+| [`docs/architecture.md`](docs/architecture.md) | 系统分层、进程与显存拓扑、关键架构决策、信任边界 |
+| [`docs/modules.md`](docs/modules.md) | 代码模块职责、接口契约、依赖规则、测试矩阵 |
+| [`docs/pipeline.md`](docs/pipeline.md) | 训练单步、自我进化单轮、多轮回路、评测与实验生命周期流程 |
+
+三份文档中的 **[已实现] / [设计] / [计划]** 标注对应当前进度，不代表全部代码都已存在。
+
 ## 复现性约定
 
 - 每个实验有 ID（`EXP-W<周>-<序号>-<短名>`），先登记 `experiments/registry.csv` 再跑。
