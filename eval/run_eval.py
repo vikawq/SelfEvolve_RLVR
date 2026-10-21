@@ -29,6 +29,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# 必须在 import transformers/vllm/datasets 之前设置：huggingface_hub 在 import 时就把 ENDPOINT
+# 固化成常量，之后再 os.environ[...] 已经不生效（W2 实测：否则评测卡在 huggingface.co 超时）。
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))

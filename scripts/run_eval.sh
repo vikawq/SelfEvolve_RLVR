@@ -15,6 +15,10 @@ set -euo pipefail
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$REPO_ROOT"
 
+# 必须在 python 启动前 export：huggingface_hub import 时会固化 endpoint。
+export HF_ENDPOINT=${HF_ENDPOINT:-https://hf-mirror.com}
+export HF_HUB_DISABLE_XET=${HF_HUB_DISABLE_XET:-1}
+
 if [[ $# -lt 1 ]]; then
   echo "usage: bash scripts/run_eval.sh <model-or-checkpoint> [eval/run_eval.py args...]" >&2
   exit 2

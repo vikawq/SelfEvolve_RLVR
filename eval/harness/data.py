@@ -15,6 +15,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+# 与 run_eval.py 保持一致：必须在 datasets/transformers import 前生效。
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # 与 verl examples/data_preprocess/gsm8k.py 写入 prompt 的后缀完全一致

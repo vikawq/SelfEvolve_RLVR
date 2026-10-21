@@ -13,6 +13,10 @@ cd "$REPO_ROOT"
 mkdir -p logs
 exec >>"$REPO_ROOT/logs/w2_chain.log" 2>&1
 
+# 评测阶段要下载/读取 HF 数据集；必须在 python 启动前 export（huggingface_hub 会固化 endpoint）
+export HF_ENDPOINT=${HF_ENDPOINT:-https://hf-mirror.com}
+export HF_HUB_DISABLE_XET=${HF_HUB_DISABLE_XET:-1}
+
 EXP=EXP-W02-01-baseline-gsm8k
 TRAIN_LOG="$REPO_ROOT/logs/EXP-W02-01-baseline-gsm8k_20261021-134342.log"
 CKPT="$REPO_ROOT/checkpoints/$EXP/global_step_116"
