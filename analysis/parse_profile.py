@@ -168,7 +168,7 @@ def plot_pie(summary: dict[str, object], out: Path) -> None:
     total = summary["median_step_train_s"] or sum(values)
     other = max(0.0, total - sum(values))
     if other > 0.01:
-        labels.append("其他")
+        labels.append("other")
         values.append(other)
     fig, ax = plt.subplots(figsize=(7, 5.5))
     ax.pie(values, labels=[f"{l}\n{v:.1f}s" for l, v in zip(labels, values)], autopct="%1.1f%%", startangle=90)

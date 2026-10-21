@@ -95,3 +95,14 @@
 - project：`selfevolve-rlvr`
 - 成功运行：phase1 `runs/kv34uf1v`、phase2 `runs/16fmimie`
 - 失败尝试（v1 trainer bug）：`runs/ktrsbih8`
+
+## 9. W2 baseline 实测补充（320 sequences/step）
+
+- `perf/max_memory_allocated_gb` 在 v0.9.1 日志里以 `np.float64(9.28)` 形式打印，
+  `analysis/parse_profile.py` 已兼容；解析时不要用只匹配裸数字的正则。
+- 典型单步 ~165–175 s：`update_actor` ~116 s（≈67%）、`old_log_prob` ~29 s、
+  `gen` ~15 s、`ref` ~11 s、`reward` ~1–2 s、`update_weights` ~1.6 s。
+- 吞吐 `perf/throughput` ~600–720 tok/s（4080，vLLM util 0.3）。
+- 验证集 1319 题 greedy 一轮 `timing_s/testing` ≈ 52 s（比训练步快，因为只生成不反传）。
+- `perf/mfu/*` 仍恒为 0；不要引用。
+

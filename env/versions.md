@@ -59,11 +59,14 @@
 | wandb | 0.31.0 | 已登录（`~/.netrc` 有 api.wandb.ai） |
 | datasets | 5.1.0 | GSM8K 预处理 |
 | pyarrow | 26.0.0 | parquet |
+| math-verify | **0.9.0** | W2 评测 harness 判分器（`eval/harness/scoring.py`） |
+| latex2sympy2_extended | 1.11.0 | math-verify 依赖 |
+| matplotlib | 3.11.2 | W2 profiling 出图（`analysis/parse_profile.py`） |
 
 - **flash-attn 未单独安装**：vLLM 0.24 自带 attention 实现，实测加载 `Qwen2-1.5B-Instruct` 时选中的后端是 `FLASH_ATTN`（vLLM 内置版），因此本节与任务文档「安装与该 verl 版本匹配的 flash-attn」的差异为：**不单独编译 flash-attn**，理由见 `docs/troubleshooting.md` §1.3。
 - `deepspeed` 未安装：verl 0.9.1 默认 FSDP 路径，不需要。
 
-完整锁定见 `env/requirements.lock`（`pip freeze --all`，256 个包）。
+完整锁定见 `env/requirements.lock`（`pip freeze --all`，**264** 个包；W2 新增 math-verify / latex2sympy2_extended / matplotlib 及其依赖）。
 
 ## 5. 安装命令（可复现）
 
@@ -110,6 +113,18 @@ verl 0.9.1 / vllm 0.24.0 / transformers 5.9.0 / ray 2.59.0 / peft 0.21.2
 | checkpoint | 3.6GB/个；续跑日志含 `Resuming from .../global_step_10` |
 | GPU 时长 | 成功轨迹 ≈0.18 GPU·h；含调试 ≈0.5 GPU·h |
 | 花费 | $0（本地机器） |
+
+### 6.5 W2 baseline 校准（`EXP-W02-01`，20 步）
+
+| 项 | 结果 |
+|---|---|
+| 轨迹 | 20 步，57m28s，平均 **172.4 s/step** |
+| 单步构成 | `update_actor` ~116s（67%）、`old_log_prob` ~29s、`gen` ~15s、`ref` ~11s、`reward` 1–2s、`update_weights` 1.6s |
+| 吞吐 | 580–716 tok/s（320 sequences/step，response mean ~190–280 tok） |
+| 显存 | actor 峰值 9.28 GiB allocated / 9.53 GiB reserved |
+| 训练内验证 | step 20 GSM8K `acc/mean@1` = **0.7384**（verl 内置 rule reward，非 harness） |
+| 外推 | 116 步 ≈ 4.5–5.5 h（含验证）；**< 48h**，按任务包规则无需请示，直接跑满 |
+| wandb | calibration `runs/h3eaiogf`；full run `runs/hlrzg966` |
 
 关键环境结论（详见 `docs/troubleshooting.md`）：
 - FSDP 必须显式 `model_dtype=bf16`（默认 fp32 会导致 1.5B 模型在 16GB 上 OOM）
