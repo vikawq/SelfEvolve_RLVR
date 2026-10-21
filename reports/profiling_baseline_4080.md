@@ -161,7 +161,7 @@ W2 baseline 选 n=5 是为了对齐官方，不是为了速度。
 - 实测（`EXP-W02-04`，§5.3）：micro 1→2 单步 **169.68 → 107.87 s（-36.4%，1.57×）**，
   吞吐 697 → 1092 tok/s；显存 9.28 → 11.91 GiB；micro=4 OOM。
 - 配置建议：`configs/hw/4080.env` 的 `W02_PPO_MICRO_BS=2` / `W02_LOGPROB_MICRO_BS=2`，
-  保留 `vLLM util=0.30`；116 步预计从 ~5.2 h 降到 ~3.3 h。
+  保留 `vLLM util=0.30`；116 步预计从 ~5.2 h 降到 ~3.5 h。
 - 风险：显存余量约 3.6 GiB；只改 batching，不改有效 batch / 学习率 / 步数，数学等价；
   需用同样 20 步曲线确认 loss/ratio/精度一致（W9 的 A/B）。
 
