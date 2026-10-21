@@ -61,10 +61,18 @@ def normalize_gold(ground_truth: str) -> str:
 
 
 def extract_predicted_answer(response: str) -> str:
-    """只用于日志展示；判分仍以 Math-Verify 的 parse/verify 为准。"""
+    """只用于日志展示；判分仍以 Math-Verify 的 parse/verify 为准。
+
+    注意：模型经常输出 `#### 460 ####`（重复标记）。必须按 `####` 切分后取
+    **最后一个非空片段**，不能直接取最后一个 `####` 之后的文本（那是空串）。
+    """
     text = response or ""
     if "####" in text:
-        return text.rsplit("####", 1)[1].strip()[:200]
+        segments = [seg.strip() for seg in text.split("####")]
+        for seg in reversed(segments):
+            if seg:
+                return seg[:200]
+        return ""
     matches = list(_BOXED_RE.finditer(text))
     if matches:
         start = matches[-1].end()
@@ -84,15 +92,15 @@ def _candidate_texts(response: str) -> list[str]:
     """列出可能包含最终答案的文本片段（去重，保持优先级）。
 
     纯 LaTeX 直接 parse 会丢结构（如 `\\left(3,\\frac{\\pi}{2}\\right)` 只取到 3），
-    因此对 `####` 尾部额外生成一个 `\\boxed{...}` 版本；两种解析结果都参与 verify。
+    因此对 `####` 片段额外生成一个 `\\boxed{...}` 版本；两种解析结果都参与 verify。
     """
     text = response or ""
     candidates: list[str] = []
     if "####" in text:
-        tail = text.rsplit("####", 1)[1].strip()
-        if tail:
-            candidates.append(tail)
-            candidates.append(_boxed(tail))
+        segments = [seg.strip() for seg in text.split("####") if seg.strip()]
+        for seg in reversed(segments):
+            candidates.append(seg)
+            candidates.append(_boxed(seg))
     candidates.append(text)
     extracted = extract_predicted_answer(text)
     if extracted:

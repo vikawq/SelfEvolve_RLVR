@@ -28,6 +28,8 @@ from eval.harness.scoring import (  # noqa: E402
         ("#### 1,234", "1234"),
         ("#### $18", "18"),
         ("The final answer is 18.", "18"),
+        ("#### 460 ####", "460"),
+        ("Step 1 ... #### 8 #### 8 ####", "8"),
         ("#### \\left( 3, \\frac{\\pi}{2} \\right)", r"\left( 3, \frac{\pi}{2} \right)"),
         ("#### 2\\sqrt{3}", r"2\sqrt{3}"),
     ],
@@ -61,6 +63,9 @@ def test_extract_predicted_answer_prefers_last_hash() -> None:
     assert extract_predicted_answer("first #### 1\nsecond #### 2") == "2"
     assert extract_predicted_answer("\\boxed{\\frac{1}{2}}") == r"\frac{1}{2}"
     assert extract_predicted_answer("no answer") == ""
+    # 模型常见的重复结尾标记：必须取最后一个非空片段，而不是最后一个 #### 之后的空串
+    assert extract_predicted_answer("#### 460 ####") == "460"
+    assert extract_predicted_answer("#### 8 #### 8 ####") == "8"
 
 
 @pytest.mark.parametrize(
