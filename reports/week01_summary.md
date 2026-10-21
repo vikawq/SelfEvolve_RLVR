@@ -46,6 +46,7 @@
 6. **显存**：文档 OOM 阶梯第 1 步（util 0.25）实际会让 vLLM 起不来（1.5B 权重 3.09GB）；真正的 OOM 根因是 verl FSDP 默认 `model_dtype=fp32`（参数 6.2GB），改为 `bf16` 后 micro batch 保持文档初值 2 即可跑通。实测值已回写 `configs/hw/4080.env`。
 7. **一次实验两次 launch**：为了同时满足「跑完 20 步」和「从 step 10 续跑」，用 phase1(10 步) + phase2(resume→20) 组成一次 20 步的完整轨迹；这比先跑满 20 步再单独做一次续跑更省 GPU 时间，且续跑证据是一手日志。
 8. **数据脚本参数**：`gsm8k.py` 的 `--local_dir` 已废弃，实际用 `--local_save_dir`。
+9. **开源前历史清洗**：首次 push 到公开仓库前，用 `git filter-branch` 把 `env/versions.md` 里的 ssh 登录入口从全部历史中移除，因此所有 commit hash 与清洗前不同（原 `75c98a0` → 新 `3c1c7aa`）。registry 的 `git_commit` 已同步更新，清洗前的完整历史在本地留了一份 bundle 备份；仓库内容本身未改动，审计链条照常可用。
 
 ## 失败与问题（按发生顺序，含错误信息与解法）
 
