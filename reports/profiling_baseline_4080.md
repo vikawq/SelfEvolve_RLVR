@@ -58,7 +58,7 @@
 | `timing_s/ref` | 9.78 | 6.0% |
 | `timing_s/gen` | 9.09 | 5.6% |
 | `timing_s/update_weights` | 1.58 | 1.0% |
-| `timing_s/reward` | ~1 | ~0.6% |
+| `timing_s/reward` | ~0（首步 1–2 s） | ~0% |
 | **单步合计**（纯训练步） | **162.39** | 100% |
 
 - 吞吐 `perf/throughput` ≈ **600 tok/s**（prompt+response 总 token / step 时间）。
@@ -149,8 +149,8 @@ W2 baseline 选 n=5 是为了对齐官方，不是为了速度。
   剩余差距来自 SDPA + padding（无 flash-attn）与 FSDP 单卡开销，对应 P3/P2。
 - old_log_prob 与 ref 是两次独立的 320 条前向；baseline 分别约 0.28 / 0.10 ms/token，
   也远高于官方（0.008–0.01 ms）。micro=2 后 old_log_prob 降到 ~0.15 ms/token。
-- `reward` 1–2 s 是 320 条规则判分的 Python 开销，占比小；`update_weights` 1.6 s 是 merge 全量权重
-  的固定成本，占比 1%，不是优化重点。
+- `reward` 在稳态下接近 0（规则判分在 rollout worker 内完成，主进程只记 warmup 首步的 1–2 s）；
+  `update_weights` 1.6 s 是 merge 全量权重的固定成本，占比 1%，不是优化重点。
 
 ## 7. 最值得优化的 3 个点
 

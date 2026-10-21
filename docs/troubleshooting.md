@@ -59,7 +59,7 @@
 
 ---
 
-## 3. 冒烟实验实测（待回填）
+## 3. 冒烟实验实测
 
 ### 3.1 Ray 启动失败：AF_UNIX socket 路径超过 107 字节
 - **现象**：`ray.init()` 抛 `OSError: validate_socket_filename failed: AF_UNIX path length cannot exceed 107 bytes: /home/angus/workspace/SelfEvolve_RLVR/logs/ray/ray/session_.../sockets/plasma_store`。
@@ -257,3 +257,13 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
 - **结论**：所有上报分数用 **merged** 模型；merge 正确性由权重级检查保证。详见
   `reports/week02_summary.md` 的"merge 一致性"。
 - **教训**：生成级一致性对 kernel 差异极其敏感，不要用它判断权重 merge 是否成功。
+
+### 4.8 W2 profiling 的两个失败点（保留记录，不静默跳过）
+
+- **`EXP-W02-02` util=0.25**：vLLM 初始化失败（KV cache 不足）。16GB 下
+  `gpu_memory_utilization=0.25` 不足以同时放 1.5B 权重（~3.1GB）+ 1536 总长的 KV。
+  0.30 是可用下限，0.35 只比 0.30 快约 2%。
+- **`EXP-W02-04` micro=4**：`torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.39 GiB.
+  GPU 0 has a total capacity of 15.57 GiB of which 839.88 MiB is free.`
+  1024 response × 4 条序列的激活放不下。micro=2 是 16GB 上的实际上限（峰值 11.91 GiB）。
+- 两个失败点都写进了 `reports/profiling_baseline_4080.md` §5，作为参数边界的一部分。
