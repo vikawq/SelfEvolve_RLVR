@@ -26,13 +26,15 @@ SRC_ABS=$(cd "$(dirname "$SRC")" && pwd)/$(basename "$SRC")
 NAME=$(basename "$SRC_ABS")
 BASE_MODEL=${BASE_MODEL:-$REPO_ROOT/models/Qwen2.5-1.5B-Instruct}
 
-mkdir -p logs outputs/eval models/merged
-LOG="logs/eval_${NAME}_$(date +%Y%m%d-%H%M%S).log"
-
 is_checkpoint=0
 if [[ -f "$SRC_ABS/actor/fsdp_config.json" || -f "$SRC_ABS/fsdp_config.json" ]]; then
   is_checkpoint=1
+  # 避免不同实验的 global_step_N 重名
+  NAME="$(basename "$(dirname "$SRC_ABS")")-$(basename "$SRC_ABS")"
 fi
+
+mkdir -p logs outputs/eval models/merged
+LOG="logs/eval_${NAME}_$(date +%Y%m%d-%H%M%S).log"
 
 if [[ "$is_checkpoint" == "1" ]]; then
   MERGED="$REPO_ROOT/models/merged/$NAME"
