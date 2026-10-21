@@ -1,0 +1,234 @@
+[
+  {
+    "name": "EXP-W02-01-baseline-gsm8k",
+    "source": "logs/EXP-W02-01-baseline-gsm8k_20261021-123907.log",
+    "num_steps": 116,
+    "num_pure_training_steps": 108,
+    "median_step_s": 162.40805748000275,
+    "median_step_train_s": 162.38948090950726,
+    "median_phases_s": {
+      "timing_s/gen": 9.086985785048455,
+      "timing_s/old_log_prob": 27.6535920239985,
+      "timing_s/ref": 9.782698284951039,
+      "timing_s/update_actor": 114.45979992707726,
+      "timing_s/update_weights": 1.5844177599065006,
+      "timing_s/reward": 9.87399835139513e-06,
+      "timing_s/adv": 0.006898113992065191
+    },
+    "phase_share": {
+      "timing_s/gen": 0.0558943209150577,
+      "timing_s/old_log_prob": 0.17009807031795748,
+      "timing_s/ref": 0.06017366927699252,
+      "timing_s/update_actor": 0.7040456472952697,
+      "timing_s/update_weights": 0.009745800954310458,
+      "timing_s/reward": 6.073525871204905e-08,
+      "timing_s/adv": 4.2430505153374756e-05
+    },
+    "median_throughput_tok_s": 600.6006588968728,
+    "max_memory_allocated_gb": 9.283042430877686,
+    "median_response_tokens": 200.86563110351562
+  },
+  {
+    "name": "EXP-W02-02-prof-gpu-mem-u030",
+    "source": "logs/EXP-W02-02-prof-gpu-mem_20261021-182928.log",
+    "num_steps": 10,
+    "num_pure_training_steps": 8,
+    "median_step_s": 170.5312078440329,
+    "median_step_train_s": 170.84701254504034,
+    "median_phases_s": {
+      "timing_s/gen": 13.720679230988026,
+      "timing_s/old_log_prob": 28.48125438101124,
+      "timing_s/ref": 11.061008260003291,
+      "timing_s/update_actor": 115.53279872203711,
+      "timing_s/update_weights": 1.5984899799805135,
+      "timing_s/reward": 1.117901410907507e-05,
+      "timing_s/adv": 0.007282808073796332
+    },
+    "phase_share": {
+      "timing_s/gen": 0.08051969761613031,
+      "timing_s/old_log_prob": 0.1671420162135786,
+      "timing_s/ref": 0.06491143954546415,
+      "timing_s/update_actor": 0.6780033161065154,
+      "timing_s/update_weights": 0.009380725812739282,
+      "timing_s/reward": 6.560395593800064e-08,
+      "timing_s/adv": 4.273910161633928e-05
+    },
+    "median_throughput_tok_s": 679.7365826779378,
+    "max_memory_allocated_gb": 9.28246259689331,
+    "median_response_tokens": 263.3968811035156
+  },
+  {
+    "name": "EXP-W02-02-prof-gpu-mem-u035",
+    "source": "logs/EXP-W02-02-prof-gpu-mem_20261021-182928.log",
+    "num_steps": 10,
+    "num_pure_training_steps": 8,
+    "median_step_s": 167.58048249501735,
+    "median_step_train_s": 167.62127983151004,
+    "median_phases_s": {
+      "timing_s/gen": 9.663362470921129,
+      "timing_s/old_log_prob": 28.774811168084852,
+      "timing_s/ref": 11.194664909970015,
+      "timing_s/update_actor": 115.94753768609371,
+      "timing_s/update_weights": 1.604468225967139,
+      "timing_s/reward": 1.0804040357470512e-05,
+      "timing_s/adv": 0.006915754987858236
+    },
+    "phase_share": {
+      "timing_s/gen": 0.05779807470166344,
+      "timing_s/old_log_prob": 0.17210662338537897,
+      "timing_s/ref": 0.06695703288307484,
+      "timing_s/update_actor": 0.693500266063804,
+      "timing_s/update_weights": 0.009596574138655323,
+      "timing_s/reward": 6.462064664757869e-08,
+      "timing_s/adv": 4.136420677682911e-05
+    },
+    "median_throughput_tok_s": 712.2242669124538,
+    "max_memory_allocated_gb": 9.282909870147705,
+    "median_response_tokens": 266.35626220703125
+  },
+  {
+    "name": "EXP-W02-03-prof-rollout-n4",
+    "source": "logs/EXP-W02-03-prof-rollout-n_20261021-193047.log",
+    "num_steps": 10,
+    "num_pure_training_steps": 8,
+    "median_step_s": 136.66573688795324,
+    "median_step_train_s": 137.04066358099226,
+    "median_phases_s": {
+      "timing_s/gen": 10.853420790983364,
+      "timing_s/old_log_prob": 22.954192831995897,
+      "timing_s/ref": 8.904854611027986,
+      "timing_s/update_actor": 92.44053387199529,
+      "timing_s/update_weights": 1.595519521040842,
+      "timing_s/reward": 1.0801944881677628e-05,
+      "timing_s/adv": 0.005830048932693899
+    },
+    "phase_share": {
+      "timing_s/gen": 0.07936434783011513,
+      "timing_s/old_log_prob": 0.16784980322438972,
+      "timing_s/ref": 0.0651156895449363,
+      "timing_s/update_actor": 0.6759604022644605,
+      "timing_s/update_weights": 0.011667046609196392,
+      "timing_s/reward": 7.898793636964675e-08,
+      "timing_s/adv": 4.2631538965604574e-05
+    },
+    "median_throughput_tok_s": 688.1096956425135,
+    "max_memory_allocated_gb": 9.282493591308594,
+    "median_response_tokens": 259.67578125
+  },
+  {
+    "name": "EXP-W02-03-prof-rollout-n5",
+    "source": "logs/EXP-W02-03-prof-rollout-n_20261021-193047.log",
+    "num_steps": 10,
+    "num_pure_training_steps": 8,
+    "median_step_s": 170.88316569896415,
+    "median_step_train_s": 171.05330607446376,
+    "median_phases_s": {
+      "timing_s/gen": 13.27433198702056,
+      "timing_s/old_log_prob": 28.701939245918766,
+      "timing_s/ref": 11.073624084005132,
+      "timing_s/update_actor": 116.04223318002187,
+      "timing_s/update_weights": 1.5983422610443085,
+      "timing_s/reward": 1.0901945643126965e-05,
+      "timing_s/adv": 0.006863388931378722
+    },
+    "phase_share": {
+      "timing_s/gen": 0.07776531019400915,
+      "timing_s/old_log_prob": 0.16814520013593967,
+      "timing_s/ref": 0.06487285482286588,
+      "timing_s/update_actor": 0.6798127595176563,
+      "timing_s/update_weights": 0.009363603520526603,
+      "timing_s/reward": 6.386710724765315e-08,
+      "timing_s/adv": 4.020794189513053e-05
+    },
+    "median_throughput_tok_s": 683.4845288725126,
+    "max_memory_allocated_gb": 9.282697677612305,
+    "median_response_tokens": 256.86248779296875
+  },
+  {
+    "name": "EXP-W02-03-prof-rollout-n8",
+    "source": "logs/EXP-W02-03-prof-rollout-n_20261021-193047.log",
+    "num_steps": 10,
+    "num_pure_training_steps": 8,
+    "median_step_s": 268.7754357099766,
+    "median_step_train_s": 269.2670194244711,
+    "median_phases_s": {
+      "timing_s/gen": 19.25147508503869,
+      "timing_s/old_log_prob": 45.44170836592093,
+      "timing_s/ref": 17.918074584915303,
+      "timing_s/update_actor": 184.11838335799985,
+      "timing_s/update_weights": 1.609061901923269,
+      "timing_s/reward": 1.0899966582655907e-05,
+      "timing_s/adv": 0.010625532013364136
+    },
+    "phase_share": {
+      "timing_s/gen": 0.07174034825115647,
+      "timing_s/old_log_prob": 0.16933788028701108,
+      "timing_s/ref": 0.06677145024128608,
+      "timing_s/update_actor": 0.6861145384027229,
+      "timing_s/update_weights": 0.005996146305243575,
+      "timing_s/reward": 4.0618570530910103e-08,
+      "timing_s/adv": 3.959589400943938e-05
+    },
+    "median_throughput_tok_s": 708.8482602464557,
+    "max_memory_allocated_gb": 9.282565116882324,
+    "median_response_tokens": 262.423828125
+  },
+  {
+    "name": "EXP-W02-04-prof-micro-bs1",
+    "source": "logs/EXP-W02-04-prof-micro-bs_20261021-211159.log",
+    "num_steps": 10,
+    "num_pure_training_steps": 8,
+    "median_step_s": 168.97119898197707,
+    "median_step_train_s": 169.6836056059692,
+    "median_phases_s": {
+      "timing_s/gen": 13.064950012951158,
+      "timing_s/old_log_prob": 28.377433486049995,
+      "timing_s/ref": 11.119463889976032,
+      "timing_s/update_actor": 115.05159597995225,
+      "timing_s/update_weights": 1.5970163160236552,
+      "timing_s/reward": 1.0555027984082699e-05,
+      "timing_s/adv": 0.006757962983101606
+    },
+    "phase_share": {
+      "timing_s/gen": 0.07720815517247846,
+      "timing_s/old_log_prob": 0.16769825263898813,
+      "timing_s/ref": 0.06571118087715641,
+      "timing_s/update_actor": 0.679904742571223,
+      "timing_s/update_weights": 0.009437669751381026,
+      "timing_s/reward": 6.237561090069791e-08,
+      "timing_s/adv": 3.993661316208243e-05
+    },
+    "median_throughput_tok_s": 697.1802562631588,
+    "max_memory_allocated_gb": 9.283264636993408,
+    "median_response_tokens": 258.01251220703125
+  },
+  {
+    "name": "EXP-W02-04-prof-micro-bs2",
+    "source": "logs/EXP-W02-04-prof-micro-bs_20261021-211159.log",
+    "num_steps": 10,
+    "num_pure_training_steps": 8,
+    "median_step_s": 106.83963697205763,
+    "median_step_train_s": 107.87248645402724,
+    "median_phases_s": {
+      "timing_s/gen": 12.81187014002353,
+      "timing_s/old_log_prob": 17.936747965984978,
+      "timing_s/ref": 9.810606134939007,
+      "timing_s/update_actor": 64.85553522105329,
+      "timing_s/update_weights": 1.676747313933447,
+      "timing_s/reward": 9.28796362131834e-06,
+      "timing_s/adv": 0.006874821963720024
+    },
+    "phase_share": {
+      "timing_s/gen": 0.11962710208856057,
+      "timing_s/old_log_prob": 0.16747915461307708,
+      "timing_s/ref": 0.09160367446971734,
+      "timing_s/update_actor": 0.6055696512767595,
+      "timing_s/update_weights": 0.015656139182524356,
+      "timing_s/reward": 8.672365237697026e-08,
+      "timing_s/adv": 6.419164570872737e-05
+    },
+    "median_throughput_tok_s": 1092.2538049293462,
+    "max_memory_allocated_gb": 11.906530380249023,
+    "median_response_tokens": 256.4906311035156
+  }
+]

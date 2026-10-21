@@ -40,19 +40,21 @@
 - 采样：GSM8K/MATH greedy（temperature=0, top_p=1, n=1）；AIME temperature=0.6, top_p=0.95, n=16。
 - 判分器：`math-verify==0.9.0`；每行结果标了判分器版本与修复 commit。
 
-### Profiling（4080，96 步中位数）
+### Profiling（4080，116 步中位数）
 
 | 阶段 | 秒 | 占比 |
 |---|---|---|
-| update_actor | 114.36 | 70.6% |
-| old_log_prob | 27.52 | 17.0% |
-| ref | 9.77 | 6.0% |
-| gen | 8.84 | 5.5% |
+| update_actor | 114.46 | 70.5% |
+| old_log_prob | 27.65 | 17.0% |
+| ref | 9.78 | 6.0% |
+| gen | 9.09 | 5.6% |
 | update_weights | 1.58 | 1.0% |
 
-- 单步 **161.99 s**，吞吐 600 tok/s，actor 峰值 9.28 GiB。
+- 单步 **162.39 s**，吞吐 600 tok/s，actor 峰值 9.28 GiB。
 - 官方 2×H100 单步 56.2 s，其中 gen 45 s（80%）；4080 瓶颈在训练侧（94%）。
-- 三组扫描的结论：见 `reports/profiling_baseline_4080.md` §5–§7（micro-batch 是最大杠杆）。
+- **P1 已验证**：micro batch 1→2，单步 169.68 → **107.87 s（1.57×）**，吞吐 697 → 1092 tok/s，
+  显存 9.28 → 11.91 GiB；micro=4 OOM（差 2.39 GiB）。
+- util 0.30→0.35 只有 ~2% 收益；rollout.n 与单步近似线性、吞吐不变。详见 `reports/profiling_baseline_4080.md` §5–§7。
 
 ## 与计划的偏差及原因
 
@@ -74,17 +76,20 @@
 | 2 | 评测卡在 `huggingface.co` HEAD 超时（重试 5 次） | `transformers` 在 `_load_hf` 之前就 import 了 `huggingface_hub`，endpoint 已固化；`os.environ.setdefault` 太晚 | `run_eval.py`/`run_eval.sh`/`data.py` 在 import 前 export `HF_ENDPOINT` + `HF_HUB_DISABLE_XET=1` | 浪费约 10 min GPU + 一次手动重启 |
 | 3 | **判分 bug**：`#### 460 ####` 被抽成空答案；初版 GSM8K 0.7635、MATH-500 0.5040 | 旧抽取器取"最后一个 `####` 之后"的文本，重复标记导致空串 | 按 `####` 切分取最后一个非空片段；单独 commit；用保存的生成结果重打分（`eval/rescore.py`） | GSM8K +0.3 → 0.7665；MATH-500 +6.0 → 0.5640；原始 JSON/summary 保留可审计 |
 | 4 | merge 前后 20 题 greedy 只有 1/20 完全一致 | vLLM 的 LoRA runtime kernel 与 merged 权重 kernel 不同，长链推理因浮点差异级联分叉 | 用权重级检查证明 339/339 参数 bit-identical；记录共同前缀/准确率 | 见下方"merge 一致性" |
-| 5 | `EXP-W02-02` util=0.25 vLLM 起不来 | 16GB + 1536 总长，KV cache 不足 | 保留失败记录，继续 0.30/0.35 | 见 profiling 报告 |
-| 6 | `EXP-W02-04` micro=4 OOM（如复现） | 16GB 显存 | 失败即记录并回退 | 见 profiling 报告 |
+| 5 | `EXP-W02-02` util=0.25 vLLM 起不来 | 16GB + 1536 总长，KV cache 不足 | 保留失败记录，继续 0.30/0.35 | 约 2 min GPU；数据点已入报告 |
+| 6 | `EXP-W02-04` micro=4 OOM | 1024 response × 4 seq，显存差 2.39 GiB（仅剩 840 MiB） | 记录并停止该取值；micro=2 已足够 | 约 3 min GPU |
 
 ### merge 一致性（重要）
 
-- **权重级**：`peft.merge_and_unload()` 后 339/339 参数与 merged 模型 **bit-identical**（max|Δ|=0）。
-- **生成级（vLLM）**：adapter 与 merged 的 20 题 greedy 输出 1/20 完全一致，共同前缀中位数 235 字符、
-  15/20 ≥100 字符；准确率 14/20 vs 15/20（1 题之差）。
+- **权重级（权威）**：`peft.merge_and_unload()` 后 **339/339 参数与 merged 模型 bit-identical**
+  （max|Δ|=0，missing=0）；同一进程内 `unloaded` vs `merged` 的 20 条 GSM8K prompt logits 也
+  **max|Δ|=0**。
+- **生成级（vLLM，仅供参考）**：PEFT runtime adapter 与 merged 的 20 题 greedy 输出 1/20 完全一致，
+  共同前缀中位数 235 字符、15/20 ≥100 字符；准确率 14/20 vs 15/20（1 题之差）。
 - 结论：merge 权重正确；生成差异来自 LoRA runtime kernel（不同浮点累加）与自回归级联，不是合并错误。
   所有上报分数都用 **merged** 模型，避免 runtime 差异。
-- HF CPU bf16 的 logit 对比本身有跨进程非确定性（同一权重 max|Δ| 在 0–10 之间跳动），不作为判据。
+- 注意：CPU bf16 的 PEFT runtime forward 本身跨进程不确定（同一权重 logit 差 0–10），
+  所以判据必须是"unloaded vs merged"的权重/同进程 logits，而不是 runtime adapter 的生成。
 
 ## GPU 时长 / 花费
 
@@ -92,9 +97,9 @@
 |---|---|
 | 20 步校准 | 0.96 |
 | 全量 116 步（96 步续跑，162 s/step） | 4.43 |
-| 评测（基座 + checkpoint + merge 校验） | ~0.2 |
-| Profiling（9×10 步 + 启动开销） | 待回填 |
-| **合计** | 待回填 |
+| 评测（基座 + checkpoint + merge 校验） | ~0.20 |
+| Profiling（`EXP-W02-02` 1.02 + `03` 1.69 + `04` 0.86） | 3.57 |
+| **合计** | **9.16** |
 
 花费：**$0**（本地机器；未租云、未调用付费 API）。
 
@@ -103,8 +108,9 @@
 - **baseline 路径已稳定**：`configs/EXP-W02-01-baseline-gsm8k.sh` 可直接复用；续跑用 `resume_mode=auto`。
 - **评测统一入口** `bash scripts/run_eval.sh <ckpt>`：自动 merge LoRA → vLLM 离线 → Math-Verify。
   口径见 `eval/datasets.md`；W3 换严格 verifier 后要整体重评。
-- **Profiling 结论**：W9 的第一优先级是训练侧 micro-batch/dynamic bsz（P1），其次是复用 rollout
-  logprobs（P2），最后是 flash-attn/kernel（P3）。详见 `reports/profiling_baseline_4080.md` §7。
+- **Profiling 结论**：W9 的第一优先级是训练侧 micro-batch（P1，**实测 micro=2 单步 1.57×**，
+  169.68 → 107.87 s），其次是复用 rollout logprobs（P2），最后是 flash-attn/kernel（P3）。
+  micro=4 已 OOM，需先做 P3。详见 `reports/profiling_baseline_4080.md` §7。
 - **风险提示**：
   - 训练内 validation 与 harness 口径不同（rule reward vs Math-Verify；两者都是 greedy，但抽取不同）。
   - GSM8K 训练内 75.82 vs 官方 77.94（-2.1）略超 2 分，harness 76.65 vs 77.9（-1.25）达标；

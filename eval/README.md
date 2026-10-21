@@ -36,11 +36,13 @@ python eval/run_eval.py \
 
 ## Merge 一致性
 
-1. `merge_lora.py` 在 CPU 上对比 merge 前后 logits（3 条固定输入，max|Δ| ≤ 0.02）。
-2. 生成层面：同一 checkpoint 用 `--lora-adapter` 直接加载 adapter 跑 `--limit 20`，
-   再对 merged 模型跑 `--limit 20`，最后
-   `python eval/compare_outputs.py --left ... --right ... --datasets gsm8k --limit 20`
-   要求 greedy 输出逐字一致。
+1. **权重级（权威）**：`python eval/check_merge.py ...` 把 PEFT adapter `merge_and_unload()` 后
+   与 merged 模型逐参数比较，要求 max|Δweight| ≤ 1e-6；
+2. **logits（参考）**：同一进程内 unloaded vs merged 的 20 条 prompt logits，应为 0；
+3. **生成级（仅供参考）**：同 checkpoint 用 `--lora-adapter` 直接加载 adapter 跑 `--limit 20`，
+   再对 merged 模型跑 `--limit 20`，`compare_outputs.py` 对比。注意 vLLM 的 LoRA runtime kernel
+   与 merged kernel 不同，长链 greedy 会分叉，**逐字不一致不代表 merge 失败**；以权重级为准。
+4. `merge_lora.py` 自己也会做 3 条固定文本的 logits 校验。
 
 ## 口径
 

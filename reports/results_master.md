@@ -26,9 +26,10 @@
   重打分（`eval/rescore.py`），原始 `summary.json` 保留可审计。上表为修复后的分数。
 - GSM8K/MATH-500 的 `std` 为 0/1 样本标准差（≈0.42–0.50），更合适的误差是 binomial stderr
   （GSM8K ±0.0117、MATH-500 ±0.0222）；AIME 的 std 是 30 题逐题 accuracy 的样本标准差。
-- **merge 一致性**：merged 权重与 base+adapter 逐参数 bit-identical（339/339，max|Δ|=0）；
-  vLLM adapter 与 merged 的 greedy 生成 1/20 完全一致、共同前缀中位数 235 字符、准确率 14/20 vs 15/20，
-  差异来自 LoRA runtime kernel 与自回归级联，不是权重错误。详见 `reports/week02_summary.md`。
+- **merge 一致性**：merged 权重与 base+adapter 逐参数 bit-identical（339/339，max|Δ|=0，missing=0），
+  同进程 20 条 prompt 的 logits 也 max|Δ|=0；vLLM runtime adapter 与 merged 的 greedy 生成 1/20 完全一致、
+  共同前缀中位数 235 字符、准确率 14/20 vs 15/20，差异来自 LoRA runtime kernel 与自回归级联，不是权重错误。
+  详见 `reports/week02_summary.md`。
 - `指标定义` 必须写清楚：greedy pass@1 / avg@k / maj@k。
 - `判分器版本` 对应 `src/selfevolve/verifier/` 的 git commit 或版本号；W3 之后训练奖励与评测共用同一严格 verifier，
   届时本表需要按新 verifier 重评。

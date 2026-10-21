@@ -170,13 +170,32 @@ def plot_pie(summary: dict[str, object], out: Path) -> None:
     if other > 0.01:
         labels.append("other")
         values.append(other)
-    fig, ax = plt.subplots(figsize=(7, 5.5))
-    ax.pie(values, labels=[f"{l}\n{v:.1f}s" for l, v in zip(labels, values)], autopct="%1.1f%%", startangle=90)
+    legend = [f"{lab}: {val:.1f}s ({val / total:.1%})" for lab, val in zip(labels, values)]
+    fig, ax = plt.subplots(figsize=(8, 5.5))
+    wedges, _, autotexts = ax.pie(
+        values,
+        autopct=lambda p: f"{p:.1f}%" if p >= 2.0 else "",
+        startangle=90,
+        textprops={"fontsize": 9},
+    )
+    ax.legend(wedges, legend, loc="center left", bbox_to_anchor=(1.0, 0.5), fontsize=8, frameon=False)
     ax.set_title(f"Training step time breakdown ({summary['name']}, pure training steps)")
     fig.tight_layout()
     out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, dpi=160)
+    fig.savefig(out, dpi=160, bbox_inches="tight")
     plt.close(fig)
+
+
+def _short_label(name: str) -> str:
+    """把 run name 压成图上的短标签。"""
+    if "gpu-mem-u" in name:
+        value = name.rsplit("gpu-mem-u", 1)[1]
+        return f"util {int(value) / 100:.2f}"
+    if "rollout-n" in name:
+        return f"n={name.rsplit('rollout-n', 1)[1]}"
+    if "micro-bs" in name:
+        return f"micro={name.rsplit('micro-bs', 1)[1]}"
+    return name
 
 
 def plot_sensitivity(summaries: list[dict[str, object]], out: Path) -> None:
@@ -200,7 +219,7 @@ def plot_sensitivity(summaries: list[dict[str, object]], out: Path) -> None:
         if not items:
             ax.set_visible(False)
             continue
-        labels = [s["name"].replace(g + "-prof-", "").replace("-", "\n") for s in items]
+        labels = [_short_label(s["name"]) for s in items]
         step = [s["median_step_train_s"] or 0 for s in items]
         actor = [(s["median_phases_s"].get("timing_s/update_actor") or 0) for s in items]  # type: ignore[union-attr]
         gen = [(s["median_phases_s"].get("timing_s/gen") or 0) for s in items]  # type: ignore[union-attr]
@@ -211,7 +230,7 @@ def plot_sensitivity(summaries: list[dict[str, object]], out: Path) -> None:
         ax.bar(x, actor, 0.25, label="update_actor")
         ax.bar(x + 0.25, gen, 0.25, label="gen")
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, fontsize=8)
+        ax.set_xticklabels(labels, fontsize=9)
         ax.set_title(titles[g], fontsize=10)
         ax.set_ylabel("seconds (median)")
         ax.legend(fontsize=7)

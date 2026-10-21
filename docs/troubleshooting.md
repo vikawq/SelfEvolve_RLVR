@@ -243,15 +243,17 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
 - **教训**：生成式评测的"答案抽取"必须在真实输出上做分布检查（特别是模型学到的格式标记可能重复）；
   只看聚合分数发现不了 2.8% 的空抽取。
 
-### 4.7 merge 一致性：权重 bit-identical，但生成会分叉
+### 4.7 merge 一致性：权重 bit-identical，但 runtime adapter 的生成会分叉
 
-- **现象**：`merge_lora.py` 的 3 条固定文本 logits max|Δ|=0；但 vLLM 里 adapter 与 merged 模型
-  跑同样 20 题 greedy，只有 1/20 文本完全一致（共同前缀中位数 235 字符，准确率 14/20 vs 15/20）。
+- **现象**：`merge_lora.py` 的 3 条固定文本 logits max|Δ|=0；但 vLLM 里 PEFT runtime adapter 与 merged
+  模型跑同样 20 题 greedy，只有 1/20 文本完全一致（共同前缀中位数 235 字符，准确率 14/20 vs 15/20）。
 - **原因**：vLLM 的 LoRA runtime kernel 与 merged 权重的 kernel 浮点累加顺序不同；自回归生成里
   一个 token 的分叉会级联到整段。权重本身没有错：`peft.merge_and_unload()` 后
-  **339/339 参数与 merged 模型 bit-identical**（max|Δ|=0，已实测）。
-- **附带发现**：HF CPU bf16 的两次 forward 在同一权重上也能差到 logit 10（跨进程非确定性），
-  所以"CPU logits 对比"不能作为 merge 判据；权重级比较才是。
+  **339/339 参数与 merged 模型 bit-identical**（max|Δ|=0，missing=0），同一进程内
+  `unloaded` vs `merged` 的 20 条 GSM8K prompt logits 也是 **max|Δ|=0**（`eval/check_merge.py`）。
+- **附带发现**：HF CPU bf16 的 **runtime adapter** forward 跨进程有非确定性（同一权重 logit 能差 0–10），
+  所以"用 PEFT runtime 与 merged 比 logits"不是可靠判据；必须先 `merge_and_unload()` 再比权重/同进程 logits，
+  或直接用 vLLM 的 merged 模型出数。
 - **结论**：所有上报分数用 **merged** 模型；merge 正确性由权重级检查保证。详见
   `reports/week02_summary.md` 的"merge 一致性"。
 - **教训**：生成级一致性对 kernel 差异极其敏感，不要用它判断权重 merge 是否成功。
