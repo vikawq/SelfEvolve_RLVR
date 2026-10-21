@@ -145,3 +145,69 @@
 - **原因**：`verl/trainer/config/engine/fsdp.yaml` 的 `model_dtype` 默认是 **fp32**，1.5B 参数即 6.2GB；`backup_base_model_weights` 把参数 clone 到 CPU 再 `.to(device)` 恢复，最大的 embedding 在 fp32 下正好是 933MB（≈892MiB），一次性分配必然失败。任务文档要求的「训练统一用 BF16」也说明这里应该显式设 bf16。
 - **解法**：`actor_rollout_ref.actor.fsdp_config.model_dtype=bf16` + `actor_rollout_ref.ref.fsdp_config.model_dtype=bf16`（官方 merge 示例 `examples/tuning/lora/run_qwen3_8b_merge_fsdp.sh` 正是这么写的）。改完参数占用从 6.2GB 降到 3.1GB，micro batch 恢复文档初值 2 也能跑。
 - **教训**：OOM 先看 dtype / 权重副本，再降 batch；文档的降级阶梯是在「dtype 已正确」的前提下才有效。
+
+---
+
+## 4. W2：官方 baseline 考证与复现差异
+
+### 4.1 官方 77.9 的脚本/日志在哪里
+
+任务包要求"在 verl 文档 Algorithm Baselines 找到 77.9 分对应的脚本和超参"。实际考据结果：
+
+| 项 | 内容 |
+|---|---|
+| 表格 | `docs/algo/baseline.md`：`Qwen/Qwen2.5-1.5B-Instruct \| GRPO-LoRA \| 77.9` |
+| 表格加入 commit | `368dff726bdef15d292270806a1f641d5600039d`（PR #2083，2025-06-18） |
+| 参考脚本 | `examples/tuning/1.5b/qwen2-1.5b_grpo-lora_1_h100_fsdp_vllm.sh`（同一 commit） |
+| 实跑日志 | `eric-haibin-lin/verl-data` 的 `gsm8k/Qwen2.5-1.5B-bsz64_2-prompt512-resp1024-lorarank32-score0.779.log` |
+| 日志现状 | 该文件已从 `experiments` 分支删除（当前只有 8 个 gsm8k 日志）；本次通过 **PR #3 的 ref**（`bcff590`）取回，存 `third_party/refs/baseline_qwen2.5-1.5b.log`（不入库） |
+
+**从日志落盘 config 读到的真实超参**（以日志为准，不以文件名猜）：
+
+```
+train_batch_size=64, rollout.n=5, total_epochs=1 (116 steps)
+lr=3e-5, lora_rank=32, lora_alpha=32, target=all-linear
+kl_loss_coef=0.001 (low_var_kl), entropy_coeff=0.001
+max_prompt_length=512, max_response_length=1024
+2×H100, rollout.gpu_memory_utilization=0.1, TP=2
+final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
+```
+
+**文件名陷阱**：`bsz64_2` 的 `_2` 是 **2 张卡**（1.5B/3B 用 2 卡，7B 以上用 8 卡），不是 `rollout.n=2`。
+实际 `rollout.n=5`；有效 batch = 64 prompts × 5 = 320 sequences/step。若按 n=2 复现，有效 batch
+只有 128，与官方不可比。
+
+### 4.2 v0.9.1 上的字段差异（W2 实际使用）
+
+| 官方日志字段 | v0.9.1 处理 |
+|---|---|
+| `actor_rollout_ref.actor.ppo_micro_batch_size` | 已废弃，改 `..._per_gpu` |
+| `data.val_batch_size` | 已废弃；validation 用 `train_batch_size` |
+| `VLLM_ATTENTION_BACKEND=XFORMERS` | vLLM 0.24 不设；用内置 FLASH_ATTN |
+| `use_shm=True` | 保留可用，但单卡无收益，未开 |
+| 2×H100 的 `layered_summon=True` | 单卡 NO_SHARD 不支持，设 `False`（§3.4） |
+| 官方 `ppo_micro_batch_size=64`（每卡 64 seq） | 16GB 上必须 1；这是硬件适配，不改有效 batch |
+
+### 4.3 4080 上的系统参数偏离（不改数学）
+
+| 参数 | 官方 | 4080 | 理由 |
+|---|---|---|---|
+| `test_freq` | 5 | 20 | 只影响监控频率；省约 1h 验证时间 |
+| `rollout.max_num_batched_tokens` | 1536 | 8192 | 官方为 2×80GB 保守值；纯调度参数 |
+| `ppo_micro_batch_size_per_gpu` | 64 | 1 | 16GB + 1024 response |
+| `rollout.gpu_memory_utilization` | 0.1 | 0.30 | 16GB |
+| LoRA 同步 | adapter/layered_summon | merge 全量 | §3.5 |
+
+### 4.4 配置变量名冲突（已修复，留档）
+
+- **现象**：第一次 20 步校准的进程命令行里出现 `data.max_response_length=512`、
+  `rollout.max_model_len=1024`、`log_prob_micro_batch_size_per_gpu=2`，与 baseline 设计不符。
+- **原因**：`configs/EXP-W02-01-baseline-gsm8k.sh` 先 `source configs/hw/4080.env`，而该文件给 W1 冒烟
+  export 了 `MAX_PROMPT_LEN=512` / `MAX_RESPONSE_LEN=512` / `LOGPROB_MICRO_BS=2`；
+  配置里的 `${MAX_RESPONSE_LEN:-1024}` 因此永远取到 512。
+- **解法**：新增 W2 专用变量 `W02_PPO_MICRO_BS` / `W02_LOGPROB_MICRO_BS`（硬件档位）与
+  `BASELINE_MAX_PROMPT_LEN` / `BASELINE_MAX_RESPONSE_LEN`，不再复用 W1 变量名；启动日志打印
+  `prompt/response/micro/util` 四项，便于开跑前核对。
+- **代价**：一次无效的 wandb run（`eu4gz4yj`，约 1 步，已标注为 aborted）；checkpoint 目录已清空。
+- **教训**：`source` 硬件档位后，所有 `${VAR:-default}` 都可能被档位变量"注入"；实验级参数必须用
+  独立命名空间，不能依赖默认值。
