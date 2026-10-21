@@ -1,7 +1,5 @@
-"""评测数据层单测（W2）：模板、注册表、本地 GSM8K 读取。
-
-不联网：HF 数据集加载不在单测里跑（GPU 机器上由 run_eval.py 的冒烟覆盖）。
-"""
+"""评测数据层单测（W2）：模板、注册表、本�?GSM8K 读取�?
+不联网：HF 数据集加载不在单测里跑（GPU 机器上由 run_eval.py 的冒烟覆盖）�?"""
 
 from __future__ import annotations
 
@@ -15,8 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_prompt_suffix_matches_docs() -> None:
-    # 必须与 verl gsm8k 预处理写入 prompt 的后缀完全一致（docs/data_format.md）
-    expected = 'Let\'s think step by step and output the final answer after "####".'
+    # 必须�?verl gsm8k 预处理写�?prompt 的后缀完全一致（docs/data_format.md�?    expected = 'Let\'s think step by step and output the final answer after "####".'
     assert eval_data.PROMPT_SUFFIX.strip() == expected
 
 
@@ -24,7 +21,7 @@ def test_dataset_specs_are_explicit() -> None:
     assert set(eval_data.DATASETS) == {"gsm8k", "math500", "aime2024", "aime2025", "mmlu_pro"}
     for name, spec in eval_data.DATASETS.items():
         assert spec.name == name
-        assert spec.metric in {"pass@1", "avg@k"}
+        assert spec.metric in {"pass@1", "avg@16"}
         assert spec.n >= 1
         if spec.temperature == 0.0:
             assert spec.n == 1, f"{name}: greedy 只能 n=1"
