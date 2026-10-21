@@ -25,6 +25,7 @@ cloudpickle==3.1.2
 codetiming==1.4.0
 colorful==0.5.8
 compressed-tensors==0.17.0
+contourpy==1.3.3
 cryptography==50.0.2
 cuda-bindings==13.4.4
 cuda-core==1.2.2
@@ -33,6 +34,7 @@ cuda-python==13.4.4
 cuda-tile==1.3.0
 cuda-toolkit==13.0.2
 cwevals==0.0.1b1
+cycler==0.12.1
 datasets==5.1.0
 depyf==0.20.0
 detect-installer==0.2.1
@@ -52,6 +54,7 @@ fastsafetensors==0.5.0
 filelock==4.2.4
 flashinfer-cubin==0.6.12
 flashinfer-python==0.6.12
+fonttools==4.67.0
 frozenlist==1.8.0
 fsspec==2026.7.0
 google-api-core==2.42.0
@@ -78,7 +81,9 @@ jiter==0.17.0
 jmespath==1.1.0
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
+kiwisolver==1.5.1
 lark==1.2.2
+latex2sympy2_extended==1.11.0
 llguidance==1.7.6
 llvmlite==0.47.0
 lm-format-enforcer==0.11.3
@@ -86,7 +91,9 @@ loguru==0.7.3
 Markdown==3.11.2
 markdown-it-py==4.2.0
 MarkupSafe==3.0.4
+math-verify==0.9.0
 mathruler==0.1.0
+matplotlib==3.11.2
 mbridge==0.15.1
 mcp==2.3.0
 mcp-types==2.3.0
@@ -180,6 +187,7 @@ pyelftools==0.33
 Pygments==2.21.0
 PyJWT==2.15.1
 pylatexenc==2.11
+pyparsing==3.3.3
 pytest==9.1.1
 pytest-asyncio==1.4.0
 pytest-rerunfailures==16.7

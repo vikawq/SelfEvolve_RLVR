@@ -296,7 +296,7 @@ def main(argv: list[str] | None = None) -> int:
 
     phase_keys = list(PHASES)
     with csv_path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.writer(fh)
+        writer = csv.writer(fh, lineterminator="\n")
         writer.writerow(["run", "num_steps", "median_step_train_s", *phase_keys, "median_throughput_tok_s",
                          "max_memory_allocated_gb", "median_response_tokens"])
         for s in summaries:
