@@ -2,7 +2,7 @@
 
 在单张消费级 GPU 上构建**可复现、可审计、跑得快**的 RLVR 自我进化后训练系统：不使用人工标注训练数据，由模型自己出题、自己解题、自我提升；同时系统研究它在什么条件下有效、什么条件下会被奖励欺骗。
 
-> 本仓库当前进度：**W1（环境与项目骨架）**。RLVR = Reinforcement Learning with Verifiable Rewards。
+> 本仓库当前进度：**W2（Baseline 复现、评测 harness、Profiling）**。RLVR = Reinforcement Learning with Verifiable Rewards。
 
 ## 环境搭建
 
@@ -62,6 +62,21 @@ HW=4080 bash scripts/run_exp.sh EXP-W01-01-smoke
 ```
 
 冒烟实验 `EXP-W01-01-smoke` 的配置在 `configs/EXP-W01-01-smoke.sh`，20 步 GRPO + LoRA，checkpoint 每 10 步保存。
+
+## Baseline 与评测（W2）
+
+```bash
+# 官方 Qwen2.5-1.5B GRPO-LoRA GSM8K baseline（64 prompts × n=5，1 epoch=116 步）
+HW=4080 bash scripts/run_exp.sh EXP-W02-01-baseline-gsm8k
+
+# 一条命令评任意基座 / LoRA checkpoint（checkpoint 会先自动 merge）
+bash scripts/run_eval.sh models/Qwen2.5-1.5B-Instruct
+bash scripts/run_eval.sh checkpoints/EXP-W02-01-baseline-gsm8k/global_step_116
+bash scripts/run_eval.sh <ckpt> --limit 20 --datasets gsm8k   # 冒烟
+```
+
+评测口径、数据集来源、AIME 的 avg@16 定义见 [`eval/datasets.md`](eval/datasets.md)；
+profiling 解析见 `analysis/parse_profile.py`，报告在 `reports/profiling_baseline_4080.md`。
 
 ## 目录结构
 
