@@ -80,28 +80,44 @@ def extract_predicted_answer(response: str) -> str:
     return nums[-1] if nums else ""
 
 
-def _parse_pred(response: str) -> list[Any]:
-    """优先按 GSM8K 的 `####` 取最后一段，失败再退回全文抽取。"""
-    assert _mv_parse is not None
+def _candidate_texts(response: str) -> list[str]:
+    """列出可能包含最终答案的文本片段（去重，保持优先级）。
+
+    纯 LaTeX 直接 parse 会丢结构（如 `\\left(3,\\frac{\\pi}{2}\\right)` 只取到 3），
+    因此对 `####` 尾部额外生成一个 `\\boxed{...}` 版本；两种解析结果都参与 verify。
+    """
+    text = response or ""
     candidates: list[str] = []
-    if "####" in response:
-        candidates.append(response.rsplit("####", 1)[1])
-    candidates.append(response)
-    tail = extract_predicted_answer(response)
-    if tail and tail not in candidates:
-        candidates.append(tail)
-    best: list[Any] = []
-    for cand in candidates:
+    if "####" in text:
+        tail = text.rsplit("####", 1)[1].strip()
+        if tail:
+            candidates.append(tail)
+            candidates.append(_boxed(tail))
+    candidates.append(text)
+    extracted = extract_predicted_answer(text)
+    if extracted:
+        candidates.append(extracted)
+        candidates.append(_boxed(extracted))
+    out: list[str] = []
+    for c in candidates:
+        if c and c not in out:
+            out.append(c)
+    return out
+
+
+def _parse_pred_candidates(response: str) -> list[list[Any]]:
+    """返回多个候选解析结果；verify 时任一命中即算对。"""
+    assert _mv_parse is not None
+    parsed_sets: list[list[Any]] = []
+    for cand in _candidate_texts(response):
         try:
             parsed = _mv_parse(cand)
         except Exception as exc:  # Math-Verify 对畸形公式可能抛异常
             logger.debug("math_verify.parse failed on %r: %s", cand[:80], exc)
             continue
-        if parsed:
-            # 取信息量最大的结果（通常是 [expr, str] 两项中第一项）
-            if not best or len(parsed) >= len(best):
-                best = parsed
-    return best
+        if parsed and parsed not in parsed_sets:
+            parsed_sets.append(parsed)
+    return parsed_sets
 
 
 def score_math(response: str, ground_truth: str) -> dict[str, Any]:
@@ -117,16 +133,16 @@ def score_math(response: str, ground_truth: str) -> dict[str, Any]:
         return result
     try:
         gold = _mv_parse(normalize_gold(ground_truth))
-        pred = _parse_pred(response or "")
+        pred_sets = _parse_pred_candidates(response or "")
         result["gold_parsed"] = repr(gold)[:300]
-        result["pred_parsed"] = repr(pred)[:300]
+        result["pred_parsed"] = repr(pred_sets[0])[:300] if pred_sets else "[]"
         if not gold:
             result["error"] = "gold_parse_empty"
             return result
-        if not pred:
+        if not pred_sets:
             result["error"] = "pred_parse_empty"
             return result
-        result["correct"] = bool(_mv_verify(gold, pred))
+        result["correct"] = any(bool(_mv_verify(gold, pred)) for pred in pred_sets)
     except Exception as exc:  # pragma: no cover - 防御性
         result["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
     return result
