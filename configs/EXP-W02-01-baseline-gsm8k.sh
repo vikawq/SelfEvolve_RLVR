@@ -44,13 +44,14 @@ LORA_RANK=${LORA_RANK:-32}
 LORA_ALPHA=${LORA_ALPHA:-32}
 KL_COEF=${KL_COEF:-0.001}
 ENTROPY_COEFF=${ENTROPY_COEFF:-0.001}
-MAX_PROMPT_LEN=${MAX_PROMPT_LEN:-512}
-MAX_RESPONSE_LEN=${MAX_RESPONSE_LEN:-1024}
+# 用独立变量名，避免被 configs/hw/*.env 里给 W1 冒烟用的 MAX_*_LEN 覆盖
+MAX_PROMPT_LEN=${BASELINE_MAX_PROMPT_LEN:-512}
+MAX_RESPONSE_LEN=${BASELINE_MAX_RESPONSE_LEN:-1024}
 SEED=${SEED:-42}
 
-# --- 4080 系统参数 ---
-MICRO_BS=${MICRO_BS:-$PPO_MICRO_BS_LONG}
-LOGPROB_MICRO_BS=${LOGPROB_MICRO_BS:-$LOGPROB_MICRO_BS_LONG}
+# --- 4080 系统参数（显存相关值来自 configs/hw/*.env）---
+MICRO_BS=${BASELINE_MICRO_BS:-$W02_PPO_MICRO_BS}
+LOGPROB_MICRO_BS=${BASELINE_LOGPROB_MICRO_BS:-$W02_LOGPROB_MICRO_BS}
 SAVE_FREQ=${SAVE_FREQ:-20}
 TEST_FREQ=${TEST_FREQ:-20}
 MAX_NUM_SEQS=${MAX_NUM_SEQS:-256}
@@ -66,8 +67,8 @@ cd "$REPO_ROOT"
 mkdir -p "$CKPT_DIR"
 
 echo "[$EXP_ID] HW=$HW total_epochs=$TOTAL_EPOCHS total_steps=${TOTAL_STEPS:-auto}"
-echo "[$EXP_ID] bs=$TRAIN_BS x n=$ROLLOUT_N = $((TRAIN_BS * ROLLOUT_N)) seq/step; micro=$MICRO_BS; util=$ROLLOUT_GPU_MEM"
-echo "[$EXP_ID] ckpt=$CKPT_DIR"
+echo "[$EXP_ID] prompt=$MAX_PROMPT_LEN response=$MAX_RESPONSE_LEN bs=$TRAIN_BS x n=$ROLLOUT_N = $((TRAIN_BS * ROLLOUT_N)) seq/step"
+echo "[$EXP_ID] micro=$MICRO_BS logprob_micro=$LOGPROB_MICRO_BS util=$ROLLOUT_GPU_MEM ckpt=$CKPT_DIR"
 
 # 单卡：关掉官方示例默认的 uv runtime_env，直接用当前 conda 环境的 python。
 # lora.merge=True -> 绕开 vLLM 0.24 add_lora 不兼容；use_v1=False -> 绕开 v1 GRPO values bug。
