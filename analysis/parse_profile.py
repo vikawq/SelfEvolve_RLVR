@@ -34,15 +34,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 STEP_RE = re.compile(r"step:(\d+) - (.+)$")
-PAIR_RE = re.compile(r"([A-Za-z0-9_./-]+):(-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)")
+PAIR_RE = re.compile(r"([A-Za-z0-9_./-]+):(?:np\.float64\()?(-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\)?")
 TAG_RE = re.compile(r"^\[(EXP-W\d+[^\]]*)\]")
 
 PHASES = {
-    "timing_s/gen": "rollout 生成",
+    "timing_s/gen": "rollout (gen)",
     "timing_s/old_log_prob": "old logprob",
     "timing_s/ref": "ref logprob",
-    "timing_s/update_actor": "actor 更新",
-    "timing_s/update_weights": "权重同步",
+    "timing_s/update_actor": "actor update",
+    "timing_s/update_weights": "weight sync",
     "timing_s/reward": "reward",
     "timing_s/adv": "advantage",
 }
