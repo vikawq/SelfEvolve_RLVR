@@ -35,7 +35,8 @@ def test_parse_merges_split_runs_and_reads_np_float(tmp_path) -> None:
     run = merged["EXP-W02-09-test"]
     assert len(run.steps) == 5
     assert run.max_of(("perf/max_memory_allocated_gb",)) == 9.5
-    assert run.median("training/global_step") == 3.0
+    # 默认剔除 step 1，剩余 [2,3,4,5] 的中位数
+    assert run.median("training/global_step") == 3.5
 
 
 def test_summarize_shares_and_medians(tmp_path) -> None:
