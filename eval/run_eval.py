@@ -187,7 +187,7 @@ def main(argv: list[str] | None = None) -> int:
 
     datasets = [d.strip() for d in args.datasets.split(",") if d.strip()]
     run_name = args.run_name or Path(args.model.rstrip("/")).name
-    if args.lora_adapter:
+    if args.lora_adapter and args.run_name is None:
         run_name += "-lora"
     out_dir = Path(args.output_dir) / run_name
     if out_dir.exists() and any(out_dir.iterdir()) and not args.overwrite:

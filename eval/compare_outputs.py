@@ -39,7 +39,8 @@ def main() -> int:
         left_path = Path(args.left) / f"{ds}.jsonl"
         right_path = Path(args.right) / f"{ds}.jsonl"
         if not left_path.exists() or not right_path.exists():
-            print(f"[compare] {ds}: SKIP (missing jsonl)")
+            print(f"[compare] {ds}: MISSING jsonl (left={left_path.exists()}, right={right_path.exists()})")
+            failed = True
             continue
         left = _load(left_path, args.limit)
         right = _load(right_path, args.limit)
