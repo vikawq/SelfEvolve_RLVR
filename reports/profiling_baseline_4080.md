@@ -49,21 +49,21 @@
 | LoRA 同步 | adapter + layered_summon | **merge 全量**（vLLM 0.24 兼容性） |
 | test_freq | 5 | **20**（只影响监控频率） |
 
-## 3. 单步耗时构成（EXP-W02-01，116 步）
+## 3. 单步耗时构成（EXP-W02-01，96 个续跑步的中位数）
 
 | 阶段 | 中位数 (s) | 占比 |
 |---|---|---|
-| `timing_s/update_actor` | 113.2 | 71.0% |
-| `timing_s/old_log_prob` | 27.5 | 17.3% |
-| `timing_s/ref` | 9.5 | 6.0% |
-| `timing_s/gen` | 7.6 | 4.8% |
-| `timing_s/update_weights` | 1.6 | 1.0% |
+| `timing_s/update_actor` | 114.36 | 70.6% |
+| `timing_s/old_log_prob` | 27.52 | 17.0% |
+| `timing_s/ref` | 9.77 | 6.0% |
+| `timing_s/gen` | 8.84 | 5.5% |
+| `timing_s/update_weights` | 1.58 | 1.0% |
 | `timing_s/reward` | ~1 | ~0.6% |
-| **单步合计**（纯训练步） | **159.4** | 100% |
+| **单步合计**（纯训练步） | **161.99** | 100% |
 
-- 吞吐 `perf/throughput` ≈ **596 tok/s**（prompt+response 总 token / step 时间）。
+- 吞吐 `perf/throughput` ≈ **600 tok/s**（prompt+response 总 token / step 时间）。
 - actor 峰值显存 **9.28 GiB allocated / 9.53 GiB reserved**；vLLM 进程约 3.9–4.7 GiB。
-- 每步总 token 约 95k–124k（随 response 长度波动；step 20 时 response mean 192 tok）。
+- 每步总 token 约 95k–110k（response mean 190–210 tok）。
 - 验证集 1319 题 greedy 一轮 `timing_s/testing` ≈ 42–52 s。
 
 > 图：`reports/figures/profile_phase_pie.png`。
@@ -72,12 +72,12 @@
 
 | 指标 | 官方 2×H100 | 4080 | 4080 / 官方 |
 |---|---|---|---|
-| 单步中位数 | 56.2 s | 159.4 s | **2.8×** |
-| `gen` | 45.0 s（80%） | 7.6 s（5%） | **0.17×** |
-| `old_log_prob` | 2.09 s | 27.5 s | 13.2× |
-| `ref` | 0.80 s | 9.5 s | 11.9× |
-| `update_actor` | 7.08 s | 113.2 s | 16.0× |
-| 吞吐 | 880 tok/s | 596 tok/s | 0.68× |
+| 单步中位数 | 56.2 s | 161.99 s | **2.88×** |
+| `gen` | 45.0 s（80%） | 8.84 s（5.5%） | **0.20×** |
+| `old_log_prob` | 2.09 s | 27.52 s | 13.2× |
+| `ref` | 0.80 s | 9.77 s | 12.2× |
+| `update_actor` | 7.08 s | 114.36 s | 16.2× |
+| 吞吐 | 880 tok/s | 600 tok/s | 0.68× |
 | 峰值显存 | 25.9 GB / 2 卡 | 9.28 GB / 1 卡 | — |
 
 **解读：**

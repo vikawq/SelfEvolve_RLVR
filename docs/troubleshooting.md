@@ -211,3 +211,47 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
 - **代价**：一次无效的 wandb run（`eu4gz4yj`，约 1 步，已标注为 aborted）；checkpoint 目录已清空。
 - **教训**：`source` 硬件档位后，所有 `${VAR:-default}` 都可能被档位变量"注入"；实验级参数必须用
   独立命名空间，不能依赖默认值。
+
+### 4.5 评测卡在 huggingface.co：HF_ENDPOINT 设置太晚
+
+- **现象**：基座评测在 vLLM 初始化完成后卡住，日志反复
+  `'timed out' thrown while requesting HEAD https://huggingface.co/datasets/HuggingFaceH4/MATH-500/...`
+  （重试 5 次）；GPU 显存已占用但 util 0%。
+- **原因**：`eval/harness/data.py` 里 `os.environ.setdefault("HF_ENDPOINT", ...)` 是在 `load_dataset` 前执行，
+  但 `run_eval.py` 先 import 了 vLLM/transformers，`huggingface_hub` 在 import 时已把 `ENDPOINT`
+  固化成 `https://huggingface.co`；之后再改 env 不生效。
+- **解法**：三层同时设置，确保在 import 链之前：
+  1. `eval/run_eval.py` 在 import transformers/vllm 之前设置 env；
+  2. `eval/harness/data.py` 模块顶层设置；
+  3. `scripts/run_eval.sh` / `scripts/w2_chain.sh` 在启动 python 前 export。
+  另加 `HF_HUB_DISABLE_XET=1`（W1 §1.2b 的 401 问题）。
+- **代价**：一次卡住的评测（约 10 min GPU）与一次手动重启；checkpoint 不受影响。
+- **教训**：HF 镜像/endpoint 必须在"任何 import huggingface_hub 的库"之前设置；脚本层 export 最稳。
+
+### 4.6 判分器 bug：`#### 460 ####` 被误判为空答案
+
+- **现象**：初版 GSM8K 结果里 37/1319 条 `extracted=""`；抽查发现模型输出形如
+  `... #### 460 ####`（重复结尾标记）。这些样本的 `correct` 多数仍为 True（全文 parse 兜底），
+  但 3 条被误判；MATH-500 上影响更大（0.504 → 0.564）。
+- **原因**：旧 `extract_predicted_answer` 取"最后一个 `####` 之后"的文本；重复标记时该文本为空，
+  候选列表里也没有正确的答案片段；math_verify 对带尾部 `####` 的全文 parse 有时失败。
+- **解法（单独 commit `886f77b`）**：
+  - 按 `####` 切分，取**最后一个非空片段**；对所有非空片段（含 `\boxed{}` 包装）分别 parse，任一 verify 命中即算对；
+  - 新增 `eval/rescore.py`，用保存的生成结果重打分，不重跑模型；原始 `summary.json`/JSONL 保留；
+  - 更新单测（49 个全过），`results_master.md` 同时记录修复前后分数。
+- **影响**：GSM8K 0.7635 → **0.7665**；MATH-500 0.5040 → **0.5640**；基座 MATH 不变（0.552）。
+- **教训**：生成式评测的"答案抽取"必须在真实输出上做分布检查（特别是模型学到的格式标记可能重复）；
+  只看聚合分数发现不了 2.8% 的空抽取。
+
+### 4.7 merge 一致性：权重 bit-identical，但生成会分叉
+
+- **现象**：`merge_lora.py` 的 3 条固定文本 logits max|Δ|=0；但 vLLM 里 adapter 与 merged 模型
+  跑同样 20 题 greedy，只有 1/20 文本完全一致（共同前缀中位数 235 字符，准确率 14/20 vs 15/20）。
+- **原因**：vLLM 的 LoRA runtime kernel 与 merged 权重的 kernel 浮点累加顺序不同；自回归生成里
+  一个 token 的分叉会级联到整段。权重本身没有错：`peft.merge_and_unload()` 后
+  **339/339 参数与 merged 模型 bit-identical**（max|Δ|=0，已实测）。
+- **附带发现**：HF CPU bf16 的两次 forward 在同一权重上也能差到 logit 10（跨进程非确定性），
+  所以"CPU logits 对比"不能作为 merge 判据；权重级比较才是。
+- **结论**：所有上报分数用 **merged** 模型；merge 正确性由权重级检查保证。详见
+  `reports/week02_summary.md` 的"merge 一致性"。
+- **教训**：生成级一致性对 kernel 差异极其敏感，不要用它判断权重 merge 是否成功。

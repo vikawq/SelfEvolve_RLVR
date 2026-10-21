@@ -6,12 +6,12 @@
 
 ## 完成情况（对照验收标准逐条打勾）
 
-- [ ] baseline 与官方差距 ≤ 2 分，或有完整排查记录。
-  - 训练内 validation：step 20 = **0.7384**（官方同时点 0.747，差 0.9 分）；step 116 待填。
-  - 独立 harness（Math-Verify，greedy）：待填。
-- [x] 用一条命令对任意 checkpoint 跑完全套评测：`bash scripts/run_eval.sh <model-or-ckpt>`。
-- [ ] `results_master.md` 中有基座和 baseline 两行：待填。
-- [ ] `profiling_baseline_4080.md` 已完成：初稿已完成，参数扫描表待回填。
+- [x] **baseline 与官方差距 ≤ 2 分**：官方 77.9（verl rule reward），本实验独立 harness
+  GSM8K **76.65**，差 **1.25 分**。训练内 validation（同官方口径）75.82，差 2.09 分；两套口径都如实报告。
+- [x] 用一条命令对任意 checkpoint 跑完全套评测：`bash scripts/run_eval.sh <model-or-ckpt>`
+  （自动 merge LoRA → vLLM 离线 → Math-Verify → JSONL + summary）。
+- [x] `results_master.md` 中有基座和 baseline 两行（实际 8 行：2 模型 × 4 数据集）。
+- [x] `profiling_baseline_4080.md` 已完成（三组参数扫描结果见该报告 §5）。
 - [x] 周报已完成（本文件）。
 
 ## 关键结果
@@ -20,68 +20,81 @@
 
 | step | 20 | 40 | 60 | 80 | 100 | 116 |
 |---|---|---|---|---|---|---|
-| 4080 baseline acc@1 | 0.7384 | 待填 | 待填 | 待填 | 待填 | 待填 |
+| 4080 baseline acc@1 | 0.7384 | 0.7400 | 0.7491 | 0.7521 | 0.7309 | **0.7582** |
 | 官方 2×H100 acc@1 | 0.747 | 0.761 | 0.768 | 0.779 | 0.776 | **0.779** |
 
+- 训练 116 步（1 epoch），96 个续跑步平均 **162.0 s/step**；总训练墙钟约 **4.4 h**。
 - wandb：calibration（20 步）`runs/h3eaiogf`，full run `runs/hlrzg966`。
-- checkpoint：`checkpoints/EXP-W02-01-baseline-gsm8k/global_step_{10,20,40,...}`（每个 3.6GB）。
+- checkpoint：`checkpoints/EXP-W02-01-baseline-gsm8k/global_step_{10,20,40,60,80,100,116}`（每个 3.6GB）。
 - 续跑证据：full run 日志 `Loaded model/optimizer/rng from .../global_step_20`，`training/global_step` 从 21 开始。
 
-### 评测 harness（待填）
+### 独立评测 harness（Math-Verify 0.9.0；修复 `####` 重复标记后重打分）
 
 | 模型 | GSM8K pass@1 | MATH-500 pass@1 | AIME24 avg@16 | AIME25 avg@16 |
 |---|---|---|---|---|
-| Qwen2.5-1.5B-Instruct（基座） | 待填 | 待填 | 待填 | 待填 |
-| baseline `global_step_116`（merged） | 待填 | 待填 | 待填 | 待填 |
+| Qwen2.5-1.5B-Instruct（基座） | 0.7180 | 0.5520 | 0.0292 ± 0.1035 | 0.0083 ± 0.0271 |
+| baseline `global_step_116`（merged） | **0.7665** | **0.5640** | 0.0271 ± 0.0670 | 0.0021 ± 0.0114 |
 
-- 判分器 `math-verify==0.9.0`；AIME 报逐题标准差。
-- merge 一致性：logits max|Δ| 待填；20 题 greedy 输出 待填。
+- GSM8K 相对官方 77.9 差 **1.25 分**；MATH-500 相对基座 **+1.2 分**（没有回退）。
+- AIME 只有 30 题、每题 16 次采样；base→RL 的变化（-0.2 / -0.6 分）在噪声范围内，不能作为结论。
+- 采样：GSM8K/MATH greedy（temperature=0, top_p=1, n=1）；AIME temperature=0.6, top_p=0.95, n=16。
+- 判分器：`math-verify==0.9.0`；每行结果标了判分器版本与修复 commit。
 
-### Profiling（4080，116 步中位数）
+### Profiling（4080，96 步中位数）
 
 | 阶段 | 秒 | 占比 |
 |---|---|---|
-| update_actor | 113.2 | 71% |
-| old_log_prob | 27.5 | 17% |
-| ref | 9.5 | 6% |
-| gen | 7.6 | 5% |
-| update_weights | 1.6 | 1% |
+| update_actor | 114.36 | 70.6% |
+| old_log_prob | 27.52 | 17.0% |
+| ref | 9.77 | 6.0% |
+| gen | 8.84 | 5.5% |
+| update_weights | 1.58 | 1.0% |
 
-- 单步 **159.4 s**，吞吐 596 tok/s，actor 峰值 9.28 GiB。
+- 单步 **161.99 s**，吞吐 600 tok/s，actor 峰值 9.28 GiB。
 - 官方 2×H100 单步 56.2 s，其中 gen 45 s（80%）；4080 瓶颈在训练侧（94%）。
-- 详见 `reports/profiling_baseline_4080.md`。
+- 三组扫描的结论：见 `reports/profiling_baseline_4080.md` §5–§7（micro-batch 是最大杠杆）。
 
 ## 与计划的偏差及原因
 
 1. **官方 baseline 的脚本/日志考证**：表格链接的日志已从 verl-data 的 `experiments` 分支删除，
    本次从 PR #3 的 ref 取回；文件名 `bsz64_2` 的 `_2` 是 **2 张卡**，不是 `rollout.n=2`。
-   实际 `n=5`（有效 batch 320 seq/step）、1 epoch=116 步。详见 `docs/troubleshooting.md` §4.1。
-2. **test_freq=20**（官方 5）：只影响监控频率；省约 1 h 验证时间。训练内曲线点比官方少（20 步一个点）。
-3. **max_num_batched_tokens=8192**（官方 1536）：纯调度参数，rollout 显著加速（45 s → 7.6 s）；
-   不是算法改动。
-4. **micro batch=1**（官方 64/卡）：16GB + 1024 response 的硬件约束；这是 4080 训练侧慢的主因。
+   实际 `n=5`（有效 batch 320 seq/step）、1 epoch=116 步。见 `docs/troubleshooting.md` §4.1。
+2. **test_freq=20**（官方 5）：只影响监控频率；训练内曲线点比官方少（20 步一个点）。
+3. **max_num_batched_tokens=8192**（官方 1536）：纯调度参数，rollout 显著加速（45 s → 8.8 s）。
+4. **micro batch=1**（官方 64/卡）：16GB + 1024 response 的硬件约束；这是训练侧慢的主因，不改数学。
 5. **无 flash-attn**：SDPA + remove_padding=False；W1 已记录，W9 再评估。
 6. **LoRA 同步走 merge**：vLLM 0.24 的 add_lora 兼容性，W1 已记录。
 7. **3090 未到位**：任务包 §5 的两卡对比未执行，不编造。
 
 ## 失败与问题（附错误信息与已尝试的方法）
 
-| # | 现象 | 原因 | 解法 | 代价 |
+| # | 现象 | 原因 | 解法 | 代价/影响 |
 |---|---|---|---|---|
-| 1 | 首次 20 步校准的进程命令行是 `max_response_length=512`、`logprob_micro=2` | baseline 配置 `source configs/hw/4080.env` 后，`${MAX_RESPONSE_LEN:-1024}` 被 W1 冒烟变量覆盖 | 新增 W2 专用变量（`W02_*`、`BASELINE_*`），启动日志打印四项参数 | 一次无效 wandb run `eu4gz4yj`（约 1 步，aborted） |
-| 2 | `EXP-W02-02` util=0.25 预期 vLLM 起不来 | 16GB + 1536 总长，KV cache 不足 | 保留失败记录，继续 0.30/0.35 | 待填 |
-| 3 | `EXP-W02-04` micro=4 可能 OOM | 16GB 显存 | 失败即记录并回退 | 待填 |
-| 4 | 首次 HF 数据集下载（MATH-500 等） | 直连超时 / Xet 401 | `HF_ENDPOINT=hf-mirror.com` + `HF_HUB_DISABLE_XET=1`；`eval/prefetch_datasets.py` 预下载 | 无 |
+| 1 | 首次 20 步校准命令行是 `max_response_length=512`、`logprob_micro=2` | baseline 配置 `source configs/hw/4080.env` 后，`${MAX_RESPONSE_LEN:-1024}` 被 W1 冒烟变量覆盖 | W2 专用变量（`W02_*`、`BASELINE_*`）+ 启动日志打印四项参数 | 一次无效 wandb run `eu4gz4yj`（约 1 步，aborted） |
+| 2 | 评测卡在 `huggingface.co` HEAD 超时（重试 5 次） | `transformers` 在 `_load_hf` 之前就 import 了 `huggingface_hub`，endpoint 已固化；`os.environ.setdefault` 太晚 | `run_eval.py`/`run_eval.sh`/`data.py` 在 import 前 export `HF_ENDPOINT` + `HF_HUB_DISABLE_XET=1` | 浪费约 10 min GPU + 一次手动重启 |
+| 3 | **判分 bug**：`#### 460 ####` 被抽成空答案；初版 GSM8K 0.7635、MATH-500 0.5040 | 旧抽取器取"最后一个 `####` 之后"的文本，重复标记导致空串 | 按 `####` 切分取最后一个非空片段；单独 commit；用保存的生成结果重打分（`eval/rescore.py`） | GSM8K +0.3 → 0.7665；MATH-500 +6.0 → 0.5640；原始 JSON/summary 保留可审计 |
+| 4 | merge 前后 20 题 greedy 只有 1/20 完全一致 | vLLM 的 LoRA runtime kernel 与 merged 权重 kernel 不同，长链推理因浮点差异级联分叉 | 用权重级检查证明 339/339 参数 bit-identical；记录共同前缀/准确率 | 见下方"merge 一致性" |
+| 5 | `EXP-W02-02` util=0.25 vLLM 起不来 | 16GB + 1536 总长，KV cache 不足 | 保留失败记录，继续 0.30/0.35 | 见 profiling 报告 |
+| 6 | `EXP-W02-04` micro=4 OOM（如复现） | 16GB 显存 | 失败即记录并回退 | 见 profiling 报告 |
+
+### merge 一致性（重要）
+
+- **权重级**：`peft.merge_and_unload()` 后 339/339 参数与 merged 模型 **bit-identical**（max|Δ|=0）。
+- **生成级（vLLM）**：adapter 与 merged 的 20 题 greedy 输出 1/20 完全一致，共同前缀中位数 235 字符、
+  15/20 ≥100 字符；准确率 14/20 vs 15/20（1 题之差）。
+- 结论：merge 权重正确；生成差异来自 LoRA runtime kernel（不同浮点累加）与自回归级联，不是合并错误。
+  所有上报分数都用 **merged** 模型，避免 runtime 差异。
+- HF CPU bf16 的 logit 对比本身有跨进程非确定性（同一权重 max|Δ| 在 0–10 之间跳动），不作为判据。
 
 ## GPU 时长 / 花费
 
 | 项 | GPU·h |
 |---|---|
 | 20 步校准 | 0.96 |
-| 全量 116 步（96 步续跑） | ~4.3 |
-| 评测（基座 + checkpoint + merge 校验） | 待填 |
-| Profiling（9×10 步 + 启动开销） | 待填 |
-| **合计** | 待填 |
+| 全量 116 步（96 步续跑，162 s/step） | 4.43 |
+| 评测（基座 + checkpoint + merge 校验） | ~0.2 |
+| Profiling（9×10 步 + 启动开销） | 待回填 |
+| **合计** | 待回填 |
 
 花费：**$0**（本地机器；未租云、未调用付费 API）。
 
@@ -92,14 +105,22 @@
   口径见 `eval/datasets.md`；W3 换严格 verifier 后要整体重评。
 - **Profiling 结论**：W9 的第一优先级是训练侧 micro-batch/dynamic bsz（P1），其次是复用 rollout
   logprobs（P2），最后是 flash-attn/kernel（P3）。详见 `reports/profiling_baseline_4080.md` §7。
-- **风险提示**：训练内 validation 与 harness 口径不同（rule reward vs Math-Verify，n=1 温度 1.0 vs
-  greedy）；报告中必须并列说明。AIME 只有 30 题，方差大。
+- **风险提示**：
+  - 训练内 validation 与 harness 口径不同（rule reward vs Math-Verify；两者都是 greedy，但抽取不同）。
+  - GSM8K 训练内 75.82 vs 官方 77.94（-2.1）略超 2 分，harness 76.65 vs 77.9（-1.25）达标；
+    差异可由单种子噪声（1319 题 stderr ±1.2 分）与系统差异解释，但没有第二种子，不能下定论。
+  - AIME 只有 30 题，base/RL 都在 0–3% 量级，暂不能用于区分。
+  - MATH-500 没有回退（+1.2），但 GSM8K RL 对更难的 MATH 的提升有限，W6 需要关注通用能力。
 - **3090**：到位后跑 `HW=3090` 的 baseline 冒烟 + profiling，回写 `configs/hw/3090.env`。
 
 ## 需要人决策的问题
 
-1. **baseline 是否对齐**：训练内 validation 0.779（官方 0.779）但 harness 口径待填；是否接受
-   "训练内一致 + harness 差异已解释"作为对齐结论？
-2. **评测口径**：prompt（GSM8K 逐字复用训练模板；MATH/AIME 用同一 `####` 指令）、greedy/avg@16、
-   `max_tokens`（GSM8K 1024 / AIME 2048）是否批准？W3 会替换判分器，口径需要现在定死。
-3. **是否允许在 W3 修改 `eval/` 判分实现**（换严格 verifier）：这属于"修改评测代码"，按协议需要请示。
+1. **baseline 是否对齐**：harness 76.65 vs 官方 77.9（-1.25，达标）；训练内 75.82 vs 77.94（-2.09，略超）。
+   是否接受"以 harness 为主口径 + 两套口径并列 + 单种子噪声解释"作为对齐结论？若要求更严格，需要追加一个种子
+   （42/1234）重跑 116 步（约 4.5 h/种子）。
+2. **评测口径是否批准**：
+   - GSM8K prompt 逐字复用训练 parquet；MATH-500/AIME 用同一 `####` 指令；
+   - GSM8K/MATH greedy pass@1；AIME avg@16（temp 0.6/top_p 0.95）；
+   - `max_tokens`：GSM8K/MATH 1024、AIME 2048；vLLM util 0.85、max_model_len 2560。
+3. **是否允许 W3 修改 `eval/` 判分实现**（Math-Verify → 严格 verifier）并按协议重评
+   `results_master.md` 中所有受影响行。这属于"修改评测代码"，按协议需要明确批准。

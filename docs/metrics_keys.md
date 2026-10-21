@@ -96,13 +96,14 @@
 - 成功运行：phase1 `runs/kv34uf1v`、phase2 `runs/16fmimie`
 - 失败尝试（v1 trainer bug）：`runs/ktrsbih8`
 
-## 9. W2 baseline 实测补充（320 sequences/step）
+## 9. W2 baseline 实测补充（320 sequences/step，96 步中位数）
 
 - `perf/max_memory_allocated_gb` 在 v0.9.1 日志里以 `np.float64(9.28)` 形式打印，
   `analysis/parse_profile.py` 已兼容；解析时不要用只匹配裸数字的正则。
-- 典型单步 ~165–175 s：`update_actor` ~116 s（≈67%）、`old_log_prob` ~29 s、
-  `gen` ~15 s、`ref` ~11 s、`reward` ~1–2 s、`update_weights` ~1.6 s。
-- 吞吐 `perf/throughput` ~600–720 tok/s（4080，vLLM util 0.3）。
-- 验证集 1319 题 greedy 一轮 `timing_s/testing` ≈ 52 s（比训练步快，因为只生成不反传）。
+- 单步 **161.99 s**：`update_actor` 114.36 s（70.6%）、`old_log_prob` 27.52 s（17.0%）、
+  `ref` 9.77 s（6.0%）、`gen` 8.84 s（5.5%）、`update_weights` 1.58 s（1.0%）、`reward` ~1 s。
+- 吞吐 `perf/throughput` ~600 tok/s（4080，vLLM util 0.3）。
+- 验证集 1319 题 greedy 一轮 `timing_s/testing` ≈ 42–52 s（比训练步快，因为只生成不反传）。
 - `perf/mfu/*` 仍恒为 0；不要引用。
+- 与官方 2×H100 对照、参数扫描见 `reports/profiling_baseline_4080.md`。
 
