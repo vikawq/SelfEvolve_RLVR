@@ -47,6 +47,7 @@ class DatasetSpec:
     n: int
     max_tokens: int
     answer_type: str  # "math" | "mc"
+    prompt_template: str  # 显式记录模板来源，写入 summary
     loader: Callable[[int | None], list[Example]]
 
 
@@ -176,6 +177,7 @@ DATASETS: dict[str, DatasetSpec] = {
         n=1,
         max_tokens=1024,
         answer_type="math",
+        prompt_template="gsm8k_training_verbatim",
         loader=load_gsm8k,
     ),
     "math500": DatasetSpec(
@@ -187,6 +189,7 @@ DATASETS: dict[str, DatasetSpec] = {
         n=1,
         max_tokens=1024,
         answer_type="math",
+        prompt_template="####_suffix",
         loader=load_math500,
     ),
     "aime2024": DatasetSpec(
@@ -198,6 +201,7 @@ DATASETS: dict[str, DatasetSpec] = {
         n=16,
         max_tokens=2048,
         answer_type="math",
+        prompt_template="####_suffix",
         loader=load_aime2024,
     ),
     "aime2025": DatasetSpec(
@@ -209,6 +213,7 @@ DATASETS: dict[str, DatasetSpec] = {
         n=16,
         max_tokens=2048,
         answer_type="math",
+        prompt_template="####_suffix",
         loader=load_aime2025,
     ),
     "mmlu_pro": DatasetSpec(
@@ -220,6 +225,7 @@ DATASETS: dict[str, DatasetSpec] = {
         n=1,
         max_tokens=512,
         answer_type="mc",
+        prompt_template="mc_answer_letter",
         loader=load_mmlu_pro,
     ),
 }

@@ -25,6 +25,7 @@ def test_dataset_specs_are_explicit() -> None:
     for name, spec in eval_data.DATASETS.items():
         assert spec.name == name
         assert spec.metric in {"pass@1", "avg@16"}
+        assert spec.prompt_template, f"{name}: prompt_template 必须显式记录"
         assert spec.n >= 1
         if spec.temperature == 0.0:
             assert spec.n == 1, f"{name}: greedy 只能 n=1"

@@ -33,7 +33,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from eval.harness.data import DatasetSpec, Example, build_specs  # noqa: E402
+from eval.harness.data import DATASETS, DatasetSpec, Example, build_specs  # noqa: E402
 from eval.harness.generate import VLLMGenerator  # noqa: E402
 from eval.harness.scoring import SCORER_VERSION, score  # noqa: E402
 
@@ -143,6 +143,7 @@ def _process_dataset(
         "stderr": stderr,
         "num_generations": n_generations,
         "n_per_sample": spec.n,
+        "prompt_template": spec.prompt_template,
         "accuracy_over_generations": (n_correct / n_generations) if n_generations else 0.0,
         "truncation_rate": (truncated / n_generations) if n_generations else 0.0,
         "empty_answer_rate": (empty / n_generations) if n_generations else 0.0,
@@ -193,6 +194,7 @@ def main(argv: list[str] | None = None) -> int:
         "model": str(Path(args.model).resolve()),
         "lora_adapter": str(Path(args.lora_adapter).resolve()) if args.lora_adapter else None,
         "datasets": datasets,
+        "prompt_templates": {d: DATASETS[d].prompt_template for d in datasets},
         "limit": args.limit,
         "max_model_len": args.max_model_len,
         "gpu_memory_utilization": args.gpu_memory_utilization,

@@ -25,7 +25,9 @@
   这样基座与 RL 模型面对相同的输出格式要求；不针对某个数据集做 prompt 调优。
 - **MMLU-Pro**：选择题模板，选项按 A–J 列出，要求最后一行 `Answer: X`。
 
-模板集中在 `eval/harness/data.py`，改模板必须同步改本文件并重评受影响结果。
+模板集中在 `eval/harness/data.py`，每个数据集在 `DatasetSpec.prompt_template` 里显式命名
+（`gsm8k_training_verbatim` / `####_suffix` / `mc_answer_letter`），写入 `summary.json` 与
+`config.json`；改模板必须同步改本文件并重评受影响结果。
 
 ## 3. 判分
 
