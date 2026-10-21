@@ -47,6 +47,12 @@ PHASES = {
     "timing_s/adv": "advantage",
 }
 
+MEMORY_KEYS = (
+    "perf/max_memory_allocated_gb",
+    "actor/perf/max_memory_allocated_gb",
+    "critic/perf/max_memory_allocated_gb",
+)
+
 
 @dataclass
 class RunData:
@@ -61,6 +67,12 @@ class RunData:
     def median(self, key: str) -> float | None:
         vals = self.values(key)
         return statistics.median(vals) if vals else None
+
+    def max_of(self, keys: tuple[str, ...]) -> float:
+        vals: list[float] = []
+        for key in keys:
+            vals.extend(self.values(key, skip_first=False))
+        return max(vals) if vals else 0.0
 
 
 def parse_log(path: Path) -> list[RunData]:
@@ -122,7 +134,7 @@ def summarize(run: RunData) -> dict[str, object]:
         "median_phases_s": phases,
         "phase_share": {k: (v / phase_sum if phase_sum and v else None) for k, v in phases.items()},
         "median_throughput_tok_s": run.median("perf/throughput"),
-        "max_memory_allocated_gb": max(run.values("perf/max_memory_allocated_gb", skip_first=False) or [0.0]),
+        "max_memory_allocated_gb": run.max_of(MEMORY_KEYS),
         "median_response_tokens": run.median("response_length/mean"),
     }
 
@@ -160,7 +172,7 @@ def plot_pie(summary: dict[str, object], out: Path) -> None:
         values.append(other)
     fig, ax = plt.subplots(figsize=(7, 5.5))
     ax.pie(values, labels=[f"{l}\n{v:.1f}s" for l, v in zip(labels, values)], autopct="%1.1f%%", startangle=90)
-    ax.set_title(f"训练单步耗时构成（{summary['name']}，training steps）")
+    ax.set_title(f"Training step time breakdown ({summary['name']}, pure training steps)")
     fig.tight_layout()
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, dpi=160)
@@ -231,6 +243,17 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:
             print(f"[parse] wandb failed for {run_id}: {type(exc).__name__}: {exc}", file=sys.stderr)
 
+    # 同名 run 可能来自多个 launch（如 baseline 先 20 步校准再续跑）：合并并按 step 去重
+    merged: dict[str, RunData] = {}
+    for run in runs:
+        merged.setdefault(run.name, run)
+        if merged[run.name] is not run:
+            merged[run.name].steps.extend(run.steps)
+    runs = []
+    for run in merged.values():
+        by_step = {int(step["training/global_step"]): step for step in run.steps}
+        run.steps = [by_step[s] for s in sorted(by_step)]
+        runs.append(run)
     runs = [r for r in runs if len(r.steps) >= 2]
     if not runs:
         print("[parse] no runs with >=2 steps", file=sys.stderr)
