@@ -10,9 +10,15 @@
 3. `strict`：W3 严格 verifier（`src/selfevolve/verifier/math_verifier.py`）。
 
 产出：
-- `<out>.csv`：逐样本三判分器判定 + 分歧标记 + agent 初判（待人工复核）
+- `<out>.csv`：逐样本三判分器判定（`verl`/`mathverify`/`strict` 三列）+ 分歧标记
+  + agent 初判（`agent_verdict`/`agent_note`）+ 留给人填的 `human_verdict`/`human_note`
 - `<out>.jsonl`：含完整响应，供人工核对时回查
-- `<out>.md`：人工核对包（只含分歧样本）
+- `<out>.md`：人工核对包（只含分歧样本，每条都带 agent 初判与理由）
+
+判定口径与 agent 初判的实现都在 `analysis/review_adjudication.py`（与 `verifier_accuracy.py` 共用）。
+
+**重新生成不会抹掉已完成的人工核对**：输出路径上已有 CSV 时，先把里面填好的
+`human_verdict` / `human_note` 读出来，再原样写回新 CSV。
 
     python analysis/verifier_compare.py --n 300 --seed 42 \
         --out reports/verifier_review_pack
@@ -35,6 +41,13 @@ for extra in (str(REPO_ROOT), str(REPO_ROOT / "src")):
     if extra not in sys.path:
         sys.path.insert(0, extra)
 
+from analysis.review_adjudication import (  # noqa: E402
+    HumanVerdict,
+    agent_verdict,
+    is_manually_adjudicated,
+    read_human_verdicts,
+    write_review_csv,
+)
 from selfevolve.verifier.math_verifier import (  # noqa: E402
     SCORER_VERSION as STRICT_SCORER_VERSION,
     extract_answer,
@@ -231,6 +244,14 @@ def score_sample(row: dict[str, Any]) -> dict[str, Any]:
         mathverify_extracted=mv["extracted"],
         mathverify_error=mv["error"],
     )
+    # agent 初判要同时落到 CSV / MD / JSONL，统一在这里算一次
+    # （必须在上面写入 strict_extracted 之后：自动规则读的就是它）
+    agent, agent_note = agent_verdict(row)
+    row.update(
+        agent_verdict=int(agent),
+        agent_note=agent_note,
+        agent_source="manual" if is_manually_adjudicated(row) else "auto",
+    )
     return row
 
 
@@ -260,62 +281,89 @@ python analysis/verifier_compare.py --n 300 --seed 42 --out reports/verifier_rev
 - 正确数字只出现在推理里、最终答案写错（`…= -50 … #### 50`）→ 算模型**错**；
 - 输出被 `max_tokens` 截断、没给出最终答案 → 算模型**错**（任务包要求截断判错）。
 
-判分器的准确性 = 它的判定与上面这个事实一致的比例。人工核对时请按这个口径填 `人工核对` 列；
-与 agent 初判不一致的，在 `修正建议` 里写理由即可。
+判分器的准确性 = 它的判定与上面这个事实一致的比例。
 
-统计口径（`reports/verifier_validation.md`）：准确率 = 判分器与人工核对一致的比例。
+## 怎么填
+
+每条下面都写了 **agent 初判**（自动跑出来的草稿）和它的理由。核对时只需要：
+
+1. 在 `reports/verifier_review_pack.csv` 的 **`human_verdict`** 列填 `1`（模型答对）或 `0`（模型答错）
+   —— 也接受 `对`/`错`、`true`/`false`、`yes`/`no`；
+2. 与 agent 初判不一致、或想留个理由时，写在 **`human_note`** 列；
+3. 跑 `python analysis/verifier_accuracy.py` 刷新准确率。
+
+**agent 初判不能替代人工核对**：它有 96/110 条是用 strict 自己的抽取结果当参考答案
+（`strict_extracted == gold` -> 判模型正确），对 strict 而言是循环论证。
+所以 `verifier_accuracy.py` 把两种口径分开报（`results_agent` / `results_human`），
+只有 `human_verdict` 填满 110 条之后，`human_review.status` 才会变成 `complete`，
+才能对外说"人工核对通过"。
 
 ---
 """
 
 
-def write_review_pack(rows: list[dict[str, Any]], out_md: Path, out_csv: Path, out_jsonl: Path) -> None:
-    import csv
+def write_review_pack(
+    rows: list[dict[str, Any]],
+    out_md: Path,
+    out_csv: Path,
+    out_jsonl: Path,
+    human: dict[str, HumanVerdict] | None = None,
+) -> None:
+    """写 CSV / JSONL / MD 三份核对包。
 
-    fieldnames = [
-        "sample_id",
-        "dataset",
-        "run",
-        "ground_truth",
-        "finish_reason",
-        "w2_correct",
-        "verl",
-        "mathverify",
-        "strict",
-        "disagree",
-        "strict_reason",
-        "strict_extracted",
-        "mathverify_extracted",
-        "agent_note",
-        "human_verdict",
-    ]
-    with out_csv.open("w", encoding="utf-8-sig", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
+    `human` 是已完成的人工核对（通常是上一版 CSV 里读出来的），原样写回，不会被覆盖。
+    """
+    human = human or {}
+    # CSV 的列定义与逐行序列化都在 review_adjudication 里：
+    # 这里曾经把嵌套的 row["verdicts"] 直接丢给 DictWriter，三家判定被静默写成空列。
+    write_review_csv(rows, out_csv, human)
 
     with out_jsonl.open("w", encoding="utf-8") as fh:
         for row in rows:
-            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+            record = dict(row)
+            got = human.get(row["sample_id"])
+            if got is not None:
+                record["human_verdict"] = int(got.verdict)
+                record["human_note"] = got.note
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     disputed = [r for r in rows if r["disagree"]]
+    reviewed = sum(1 for r in disputed if r["sample_id"] in human)
     with out_md.open("w", encoding="utf-8") as fh:
         fh.write(_REVIEW_MD_HEADER)
-        fh.write(f"\n共 {len(rows)} 条抽样，其中三判分器不一致 **{len(disputed)}** 条。\n\n")
+        fh.write(f"\n共 {len(rows)} 条抽样，其中三判分器不一致 **{len(disputed)}** 条。\n")
+        fh.write(f"人工核对进度：**{reviewed}/{len(disputed)}**。\n\n")
         for i, row in enumerate(disputed, 1):
             fh.write(f"\n## {i}. `{row['sample_id']}`（{row['dataset']} / {row['run']}）\n\n")
             fh.write(f"- 金标：`{row['ground_truth']}`\n")
             fh.write(f"- 生成结束原因：`{row['finish_reason']}`\n")
             fh.write(
-                f"- 判定：`verl={row['verdicts']['verl']}` / `mathverify={row['verdicts']['mathverify']}`"
+                f"- 判定：`verl={row['verdicts']['verl']}`"
+                f" / `mathverify={row['verdicts']['mathverify']}`"
                 f" / `strict={row['verdicts']['strict']}`（strict reason=`{row['strict_reason']}`）\n"
             )
-            fh.write(f"- W2 抽取：`{row['w2_extracted'][:120]}`｜strict 抽取：`{row['strict_extracted'][:120]}`\n")
+            fh.write(
+                f"- W2 抽取：`{row['w2_extracted'][:120]}`"
+                f"｜strict 抽取：`{row['strict_extracted'][:120]}`\n"
+            )
             fh.write(f"- 题面尾部：{row['question_tail'].strip()[:200]}\n")
             fh.write("\n```text\n" + row["response"][-900:] + "\n```\n")
-            fh.write(f"\n- agent 初判：{row.get('agent_note', '待填')}\n")
-            fh.write("- 人工核对：\n")
+            source = "手工判定" if row["agent_source"] == "manual" else "自动规则"
+            label = "模型答对" if row["agent_verdict"] else "模型答错"
+            fh.write(
+                f"\n- agent 初判：**{label}**（`{row['agent_verdict']}`，{source}）"
+                f"——{row['agent_note']}\n"
+            )
+            got = human.get(row["sample_id"])
+            if got is None:
+                fh.write("- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）\n")
+            else:
+                mark = "模型答对" if got.verdict else "模型答错"
+                agrees = (
+                    "与初判一致" if int(got.verdict) == row["agent_verdict"] else "**与初判不一致**"
+                )
+                note = f"——{got.note}" if got.note else ""
+                fh.write(f"- 人工核对：**{mark}**（`{int(got.verdict)}`，{agrees}）{note}\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -328,8 +376,32 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--n", type=int, default=300, help="GSM8K 抽样条数（两个模型各一半）")
     parser.add_argument("--math-n", type=int, default=120, help="MATH-500 补充抽样条数（只用两个数学判分器）")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--from-jsonl",
+        default=None,
+        help="跳过抽样与打分，直接读已有的 <out>.jsonl 重建 CSV/MD（不需要 outputs/eval，"
+        "也不需要装 math-verify；改了核对包格式或 agent 初判时用这个）",
+    )
     parser.add_argument("--out", default="reports/verifier_review_pack")
+    parser.add_argument(
+        "--drop-human",
+        action="store_true",
+        help="不保留已有 CSV 里的 human_verdict（默认保留，避免重新生成抹掉人工核对结果）",
+    )
     args = parser.parse_args(argv)
+
+    if args.from_jsonl:
+        rows = [json.loads(line) for line in Path(args.from_jsonl).open(encoding="utf-8")]
+        # 旧版 jsonl 里没有 agent 初判字段，在这里补齐（打分结果原样不动）
+        for row in rows:
+            agent, agent_note = agent_verdict(row)
+            row.update(
+                agent_verdict=int(agent),
+                agent_note=agent_note,
+                agent_source="manual" if is_manually_adjudicated(row) else "auto",
+            )
+        print(f"[compare] 从 {args.from_jsonl} 重建核对包（{len(rows)} 条，不重新打分）")
+        return _finish(args, rows)
 
     if args.run_dirs:
         run_dirs = [Path(p) for p in args.run_dirs.split(",")]
@@ -352,10 +424,28 @@ def main(argv: list[str] | None = None) -> int:
         math_rows.extend(rng.sample(m, min(per_run_m, len(m))))
 
     rows = [score_sample(r) for r in gsm_rows + math_rows]
+    return _finish(args, rows)
 
+
+def _finish(args: argparse.Namespace, rows: list[dict[str, Any]]) -> int:
+    """写三份核对包并打印汇总（正常抽样路径与 --from-jsonl 共用）。"""
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    write_review_pack(rows, out.with_suffix(".md"), out.with_suffix(".csv"), out.with_suffix(".jsonl"))
+
+    # 重新生成前先把已填好的人工核对捞出来，否则一次重跑就把人工成果覆盖掉了。
+    # 旧版 CSV 没有 human_verdict 列（require_column=False -> 当成"还没核对"）。
+    human: dict[str, HumanVerdict] = {}
+    if not args.drop_human:
+        human = read_human_verdicts(out.with_suffix(".csv"), require_column=False)
+        if human:
+            print(f"[compare] 保留已有人工核对 {len(human)} 条（--drop-human 可丢弃）")
+
+    write_review_pack(
+        rows, out.with_suffix(".md"), out.with_suffix(".csv"), out.with_suffix(".jsonl"), human
+    )
+    stale = sorted(set(human) - {r["sample_id"] for r in rows})
+    if stale:
+        print(f"[compare] !! {len(stale)} 条人工核对在本次抽样里不存在，已丢弃：{stale[:3]}")
 
     gsm = [r for r in rows if r["dataset"] == "gsm8k"]
     print(f"[compare] samples: {len(rows)} (gsm8k={len(gsm)}, math500={len(rows) - len(gsm)})")
@@ -374,7 +464,11 @@ def main(argv: list[str] | None = None) -> int:
         for r in rows
     )
     print(f"[compare] mathverify vs strict joint counts: {dict(agree)}")
-    print(f"[compare] disagreements: {sum(1 for r in rows if r['disagree'])}/{len(rows)}")
+    disputed = [r for r in rows if r["disagree"]]
+    print(f"[compare] disagreements: {len(disputed)}/{len(rows)}")
+    manual = sum(1 for r in disputed if r["agent_source"] == "manual")
+    print(f"[compare] agent 初判: {manual} 条手工判定 + {len(disputed) - manual} 条自动规则")
+    print(f"[compare] 人工核对: {sum(1 for r in disputed if r['sample_id'] in human)}/{len(disputed)} 已填")
     print(f"[compare] -> {out}.md / .csv / .jsonl")
     print(f"[compare] strict scorer version: {STRICT_SCORER_VERSION}")
     return 0
