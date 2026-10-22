@@ -38,10 +38,10 @@ def _binomial_stderr(p: float, n: int) -> float:
     return math.sqrt(max(p * (1.0 - p), 0.0) / n)
 
 
-def rescore_dataset(run_dir: Path, name: str) -> dict:
+def rescore_dataset(run_dir: Path, name: str, suffix: str = "rescored") -> dict:
     spec = DATASETS[name]
     src = run_dir / f"{name}.jsonl"
-    dst = run_dir / f"{name}.rescored.jsonl"
+    dst = run_dir / f"{name}.{suffix}.jsonl"
     per_question: list[float] = []
     n_correct = n_gen = truncated = empty = 0
     token_sums = 0
@@ -104,6 +104,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-dir", required=True)
     parser.add_argument("--datasets", default=None, help="默认沿用 summary.json 的数据集列表")
     parser.add_argument("--out", default=None)
+    parser.add_argument(
+        "--suffix",
+        default="rescored",
+        help="逐样本输出的后缀（W3 用 strict，避免覆盖 W2 的 *.rescored.jsonl）",
+    )
+    parser.add_argument(
+        "--scorer-note",
+        default="re-scored from saved generations; original summary.json preserved",
+    )
     args = parser.parse_args(argv)
 
     run_dir = Path(args.run_dir)
@@ -113,15 +122,15 @@ def main(argv: list[str] | None = None) -> int:
         "config": {**summary["config"], "rescored_at": datetime.now(timezone.utc).isoformat(),
                    "scorer": SCORER_VERSION},
         "datasets": {},
-        "note": "re-scored from saved generations with fixed #### parsing; original summary.json preserved",
+        "note": args.scorer_note,
     }
     for name in names:
         before = summary["datasets"][name]["score"]
-        after = rescore_dataset(run_dir, name)
+        after = rescore_dataset(run_dir, name, args.suffix)
         result["datasets"][name] = after
         print(f"[rescore] {name}: {before:.4f} -> {after['score']:.4f} "
               f"(empty {after['empty_answer_rate']:.2%})")
-    out = Path(args.out) if args.out else run_dir / "summary_rescored.json"
+    out = Path(args.out) if args.out else run_dir / f"summary_{args.suffix}.json"
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"[rescore] -> {out}")
     return 0
