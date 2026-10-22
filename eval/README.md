@@ -26,13 +26,38 @@ python eval/run_eval.py \
 
 冒烟：加 `--limit 20`。全量 1319 题约数分钟（取决于卡）。
 
+## 长度预算（`--max-model-len`，默认 auto）
+
+vLLM 在 `prompt_len + max_tokens > max_model_len` 时**不报错**，只会把生成预算静默裁到
+`max_model_len - prompt_len`——分数掉了，看起来像模型不行，其实是被截断。所以：
+
+- 默认 `--max-model-len 0` = **auto**：先用 tokenizer 量出每个数据集的最长 prompt，
+  按 `最长 prompt + 该数据集的 max_tokens` 算预算（对齐到 64），取各数据集最大值初始化引擎。
+- 显式传值时会**校验**预算，不够就直接报错并告诉你 auto 值是多少。
+- `--max-model-len-cap`（默认 4096）防止 auto 值过大导致 16GB 上要不到 KV cache。
+- 每次运行的预算写入 `config.json → length_budgets` 与每个数据集的
+  `summary.json → length_budget`（含 `budget_ok`；为 false 时该数据集的截断率不可信）。
+
 ## 输出
 
 - `<out>/<dataset>.jsonl`：逐样本，含 `id`、`messages`、`ground_truth`、每条生成的
   `text` / `finish_reason` / `extracted` / `correct` / 判分器版本。
-- `<out>/summary.json`：数据集级指标（pass@1 / avg@k ± std、截断率、空答案率、耗时）、
-  判分器版本、生成参数。
-- `<out>/config.json`：命令行、模型路径、依赖版本、git commit。
+- `<out>/summary.json`：数据集级指标（pass@1 / avg@k、误差、截断率、空答案率、长度预算、耗时）、
+  判分器版本、生成参数。误差口径：`pass@1` 看 `binomial_stderr`，`avg@k` 看 `stderr`
+  （= `std/sqrt(n)`），具体用哪个由 `reported_stderr_kind` 标明；`pass@1` 的 `std` 是 0/1
+  样本标准差，**不要进报告**。
+- `<out>/config.json`：命令行、模型路径、长度预算、依赖版本、git commit。
+
+## 回填 `results_master.md`
+
+```bash
+python analysis/emit_results_row.py --summary outputs/eval/<run>/summary.json \
+  --date 2026-10-21 --exp-id EXP-W02-01-baseline-gsm8k \
+  --model 'Qwen2.5-1.5B-Instruct（基座，无 RL）' --gpu 'RTX 4080 16GB'
+```
+
+直接输出可粘贴的 Markdown 行（分数 / stderr / std / 截断率 / 空答案率 / 判分器版本），
+不要手抄数字。`--summary` 也接受 `summary_rescored.json`。
 
 ## Merge 一致性
 

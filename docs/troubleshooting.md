@@ -267,3 +267,21 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
   GPU 0 has a total capacity of 15.57 GiB of which 839.88 MiB is free.`
   1024 response × 4 条序列的激活放不下。micro=2 是 16GB 上的实际上限（峰值 11.91 GiB）。
 - 两个失败点都写进了 `reports/profiling_baseline_4080.md` §5，作为参数边界的一部分。
+
+### 4.9 文档错记：训练内 validation 的采样温度（已更正）
+
+- **现象**：`eval/datasets.md §5` 与 `reports/results_master.md` 的 W1 两行把 verl 内置验证循环
+  记成 `temperature=1.0`，而 `reports/week02_summary.md` 的风险提示写"两者都是 greedy"。
+  同一件事在三处有两种说法，而这正是"harness 76.65 vs 训练内 75.82"差异解释的依据。
+- **原因**：verl 的 `rollout.yaml` 里有两组采样参数——**顶层** `temperature: 1.0 / top_p: 1 / n: 1`
+  是**训练 rollout** 用的，另有 `val_kwargs:` 一组是**验证**用的。初稿读到了顶层的 1.0。
+- **事实**（已锁定的 verl commit `1876b06`，`verl/trainer/config/rollout/rollout.yaml`）：
+  `val_kwargs: temperature: 0, top_p: 1.0, top_k: -1, n: 1, do_sample: False`。
+  本项目的 `configs/*.sh` 全部没有覆盖 `actor_rollout_ref.rollout.val_kwargs`
+  （`grep -rn 'val_kwargs\|do_sample' configs/` 为空），所以训练内 validation 是 **greedy**。
+- **结论**：两套口径的差异**只在判分器与答案抽取**（verl 内置 GSM8K rule reward 只比对 `####`
+  后的数值 vs Math-Verify + 本项目抽取器），**不在采样温度**。
+- **解法**：`eval/datasets.md §5` 改为对照表并附证据；`results_master.md` 的 W1 两行采样参数更正，
+  并在说明里留更正记录。`week02_summary.md` 的表述本来就是对的，补上证据来源。
+- **教训**：同一个参数在上游配置里出现两次（训练/验证各一套）时，必须写清引用的是哪一处 + 文件 +
+  commit。文档之间互相矛盾时，先去上游配置取证，不要选一个"看起来合理"的。

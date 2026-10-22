@@ -6,11 +6,13 @@
 
 ## 摘要
 
-1. **4080 的瓶颈在训练侧，不在 rollout。** 单步中位数约 **159 s**，其中 `update_actor` **113 s（71%）**、
-   `old_log_prob` 27.5 s（17%）、`ref` 9.5 s（6%）、`gen` 7.6 s（5%）、`update_weights` 1.6 s（1%）。
+1. **4080 的瓶颈在训练侧，不在 rollout。** 单步中位数 **162.39 s**，其中 `update_actor` **114.46 s（70.5%）**、
+   `old_log_prob` 27.65 s（17.0%）、`ref` 9.78 s（6.0%）、`gen` 9.09 s（5.6%）、`update_weights` 1.58 s（1.0%）。
+   （本报告所有数字以 `analysis/profile_summary.json` 为唯一来源，见 §1；占比的分母是
+   `median_step_train_s`=162.39 s。）
 2. **官方 2×H100 的瓶颈恰好相反**：单步 56 s，`gen` 45 s（80%）。原因是官方为了 2×80GB 的保守显存
    配置用了 `gpu_memory_utilization=0.1` + `max_num_batched_tokens=1536`，把 vLLM 的并发压得很低；
-   4080 上改成 util 0.30 + 8192 后，同样 320 sequences 的 rollout 只要 7.6 s。
+   4080 上改成 util 0.30 + 8192 后，同样 320 sequences 的 rollout 只要 9.09 s。
 3. 训练侧慢的主因是 **micro batch = 1**：320 sequences/step 被拆成 320 次 forward/backward，且没有
    flash-attn（SDPA + padding）。`update_actor` 比官方慢 **16×**，`old_log_prob` 慢 **13×**，`ref` 慢 **12×**。
 4. 最值得做的 3 个优化（详见 §7）：
@@ -30,6 +32,10 @@
 
 - 统计口径：剔除 step 1（warmup / CUDA graph / 首次编译）；对含 `timing_s/testing` 或
   `timing_s/save_checkpoint` 的步，在"纯训练步"统计中剔除。报告的是**中位数**。
+- **唯一数据来源**：`analysis/profile_summary.json`（及同内容的 `.csv`）。本报告正文、摘要与各节
+  表格的数字都必须与该文件一致；阶段占比的分母统一取 `median_step_train_s`（baseline 为 162.39 s）。
+  各阶段中位数之和（162.57 s）与 `median_step_train_s` 略有出入，这是中位数不可加的正常现象，
+  不是统计错误。`EXP-W02-01` 的 116 步里有 108 步是纯训练步（其余含验证/存档）。
 - 参数扫描每组 30 步：3 个取值 × 10 步，只用于观察耗时/显存敏感度，**不作精度结论**。
 - `perf/mfu/*` 恒为 0（verl 未启用 flops counter），本报告不引用 MFU。
 - 单卡上所有实验串行，没有训练/评测并发。
@@ -84,10 +90,10 @@
 
 - 官方配置是 **rollout-bound**：80% 时间在 vLLM 生成。其 `max_num_batched_tokens=1536` 对 320 条
   平均 ~200 token 的响应来说batch 太小，GPU 空转；这是为 2×80GB 保守设置的遗留值，不是算法要求。
-- 4080 把 vLLM util 提到 0.30、batched tokens 提到 8192 后，rollout 吞吐反超官方（7.6 s vs 45 s），
+- 4080 把 vLLM util 提到 0.30、batched tokens 提到 8192 后，rollout 吞吐反超官方（9.09 s vs 45 s），
   代价是 KV cache 只有约 1.3 GB，长尾请求会排队，但在 1536 总长下足够。
-- 4080 的 96% 时间在训练侧（actor + old_log_prob + ref）。这不是算力差距能完全解释的：
-  官方训练侧只有 10 s，4080 是 150 s（15×），而单卡算力差距远小于 15×。**根因是 batching**：
+- 4080 的 **93.5%** 时间在训练侧（actor 70.5% + old_log_prob 17.0% + ref 6.0%）。这不是算力差距
+  能完全解释的：官方训练侧只有 10 s，4080 是 151.9 s（15×），而单卡算力差距远小于 15×。**根因是 batching**：
   官方每卡 micro batch 64（每步约 3 个 micro-batch），4080 micro batch 1（每步 320 个），
   每次 forward/backward 只处理 1 条序列，GPU 利用率和 Python/FSDP 开销都被放大。
 - 另一个放大项是没有 flash-attn：`use_remove_padding=False` + SDPA 对 padding 也算，
@@ -106,7 +112,7 @@
 | 0.30 | 是 | 170.85 | 13.72 | 9.28 | 679.7 | baseline 值 |
 | 0.35 | 是 | 167.62 | 9.66 | 9.28 | 712.2 | 单步 -1.9%，吞吐 +4.8% |
 
-**解读**：util 从 0.30 提到 0.35 只带来约 2% 的单步收益；因为 93% 的时间在训练侧，
+**解读**：util 从 0.30 提到 0.35 只带来约 2% 的单步收益；因为 93.5% 的时间在训练侧，
 rollout 的 KV cache 大小不是当前瓶颈。峰值显存不变（actor 的 9.28 GiB 主导）。
 0.25 在 1536 总长下会让 vLLM 起不来，不建议再试。
 
@@ -140,7 +146,7 @@ W2 baseline 选 n=5 是为了对齐官方，不是为了速度。
 
 ## 6. 瓶颈在哪
 
-- **训练侧占 94%**（baseline：actor 70.5% + old_log_prob 17.0% + ref 6.0%）。rollout 只占 5.6%；
+- **训练侧占 93.5%**（baseline：actor 70.5% + old_log_prob 17.0% + ref 6.0%）。rollout 只占 5.6%；
   即使 rollout 再快 2×，端到端也只快 2.8%。
 - actor 更新内部：320 次 micro-batch（每次 1 条 ~1536 token 序列）→ 每次都要做 FSDP unshard/
   forward/backward/optimizer，kernel launch 与通信开销摊在极小的工作量上；baseline

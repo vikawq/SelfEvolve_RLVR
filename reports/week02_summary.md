@@ -51,7 +51,7 @@
 | update_weights | 1.58 | 1.0% |
 
 - 单步 **162.39 s**，吞吐 600 tok/s，actor 峰值 9.28 GiB。
-- 官方 2×H100 单步 56.2 s，其中 gen 45 s（80%）；4080 瓶颈在训练侧（94%）。
+- 官方 2×H100 单步 56.2 s，其中 gen 45 s（80%）；4080 瓶颈在训练侧（93.5%）。
 - **P1 已验证**：micro batch 1→2，单步 169.68 → **107.87 s（1.57×）**，吞吐 697 → 1092 tok/s，
   显存 9.28 → 11.91 GiB；micro=4 OOM（差 2.39 GiB）。
 - util 0.30→0.35 只有 ~2% 收益；rollout.n 与单步近似线性、吞吐不变。详见 `reports/profiling_baseline_4080.md` §5–§7。
@@ -112,21 +112,60 @@
   169.68 → 107.87 s），其次是复用 rollout logprobs（P2），最后是 flash-attn/kernel（P3）。
   micro=4 已 OOM，需先做 P3。详见 `reports/profiling_baseline_4080.md` §7。
 - **风险提示**：
-  - 训练内 validation 与 harness 口径不同（rule reward vs Math-Verify；两者都是 greedy，但抽取不同）。
+  - 训练内 validation 与 harness 口径不同：**差异只在判分器与答案抽取**（verl 内置 GSM8K rule
+    reward 只比 `####` 后的数值 vs Math-Verify + 本项目抽取器），**不在采样**——两者都是 greedy。
+    证据：本项目所有配置都未覆盖 `rollout.val_kwargs`，verl `1876b06` 的默认值是
+    `do_sample=False, temperature=0`（顶层 `rollout.temperature=1.0` 是训练 rollout 的，不是验证的）。
+    W2 初稿曾把验证记成 `temperature=1.0`，已更正，见 `docs/troubleshooting.md §4.9`。
   - GSM8K 训练内 75.82 vs 官方 77.94（-2.1）略超 2 分，harness 76.65 vs 77.9（-1.25）达标；
-    差异可由单种子噪声（1319 题 stderr ±1.2 分）与系统差异解释，但没有第二种子，不能下定论。
+    差异可由单种子噪声（1319 题 binomial stderr ±1.16–1.24 分，-2.09 约 1.8σ）与系统差异
+    （micro-batch / attention kernel / 调度参数）解释，但没有第二种子，不能下定论。
   - AIME 只有 30 题，base/RL 都在 0–3% 量级，暂不能用于区分。
   - MATH-500 没有回退（+1.2），但 GSM8K RL 对更难的 MATH 的提升有限，W6 需要关注通用能力。
 - **3090**：到位后跑 `HW=3090` 的 baseline 冒烟 + profiling，回写 `configs/hw/3090.env`。
 
-## 需要人决策的问题
+## 人工决策门：已批准（2026-10-22）
 
-1. **baseline 是否对齐**：harness 76.65 vs 官方 77.9（-1.25，达标）；训练内 75.82 vs 77.94（-2.09，略超）。
-   是否接受"以 harness 为主口径 + 两套口径并列 + 单种子噪声解释"作为对齐结论？若要求更严格，需要追加一个种子
-   （42/1234）重跑 116 步（约 4.5 h/种子）。
-2. **评测口径是否批准**：
-   - GSM8K prompt 逐字复用训练 parquet；MATH-500/AIME 用同一 `####` 指令；
-   - GSM8K/MATH greedy pass@1；AIME avg@16（temp 0.6/top_p 0.95）；
-   - `max_tokens`：GSM8K/MATH 1024、AIME 2048；vLLM util 0.85、max_model_len 2560。
-3. **是否允许 W3 修改 `eval/` 判分实现**（Math-Verify → 严格 verifier）并按协议重评
-   `results_master.md` 中所有受影响行。这属于"修改评测代码"，按协议需要明确批准。
+计划里的"人审阅两件事：baseline 是否对齐、评测口径是否合理"已完成，三问全部获批，附带条件如下。
+本节即为协议要求的批准记录。
+
+1. **baseline 对齐 —— 接受，不追加种子。** 结论口径：以 harness 为主（76.65，差 1.25，达标），
+   训练内 75.82（差 2.09）两套并列报告，并在 `results_master.md` 明确标注 -2.09 落在单种子
+   binomial stderr（±1.16–1.24 分）之内、约 1.8σ，不下"显著不同"的结论。
+   理由：验收标准问的是 harness 分数；项目的研究主张是"相对基座的提升"（71.80 → 76.65，+4.85），
+   不是与 verl 表格的绝对对齐；4.5 GPU·h/种子只换来 ±0.8 分误差棒。
+   **替代方案（零关键路径成本）**：3090 到位后用 seed=1234 跑 116 步，与 4080 上的 W3 工作并行。
+   多种子要求保留给 W4/W7 的处理效应结论（协议 §3 的"下统计结论"指那里）。
+2. **评测口径 —— 批准，附 4 条修正（已落地）**：
+   - GSM8K prompt 逐字复用训练 parquet；MATH-500/AIME 用同一 `####` 指令（口径对称，不做
+     per-dataset prompt 调优）。**代价必须声明**：MATH/AIME 的绝对分数被系统性压低，
+     不可与基于 `\boxed{}` 的公开榜单比较，只有本 harness 内 base↔RL 的差值有效
+     （已写入 `eval/datasets.md §6` 与 `results_master.md`）。
+   - GSM8K/MATH greedy pass@1；AIME avg@16（temp 0.6 / top_p 0.95）—— 原样批准。
+   - `max_tokens` 1024/2048 批准，但 **`truncation_rate` 必须随分数一起上报**；
+     `results_master.md` 已加 `截断率` / `空答案率` 两列。
+   - **`max_model_len` 不再固定 2560**：vLLM 在 `prompt + max_tokens > max_model_len` 时不报错，
+     只会静默压缩生成预算（截断率失真）。`run_eval.py` 改为按每个数据集的
+     `最长 prompt + max_tokens` 推算（`--max-model-len 0` = auto），显式传值不足时直接报错。
+   - 误差口径统一：`pass@1` 报 binomial stderr，`avg@k` 报 `std/sqrt(30)`，
+     `summary.json → reported_stderr_kind` 标明，不混用。vLLM util 0.85 原样批准（纯吞吐参数）。
+3. **W3 修改 `eval/` 判分实现 —— 批准**（协议 §4 本来就要求训练奖励与评测共用同一严格 verifier），
+   附 4 条执行要求：
+   - 严格 verifier 单独 commit，registry 注明 commit hash（W2 的 `886f77b` 是范例）；
+   - `results_master.md` **追加新行、不覆盖旧行**，保留 Math-Verify 0.9.0 的行用于对比审计；
+   - 必须产出**逐样本分歧报告**（Math-Verify 判对/严格判错，及反向）。这批分歧样本同时是 W4
+     复现 reward hacking 的现成候选集；
+   - 重评走 `eval/rescore.py` 从保存的生成重打分，greedy 部分零 GPU 成本。
+
+## 遗留给 W3 的小尾巴
+
+- **AIME 两行要先复核长度预算**：W2 的 AIME 结果是在旧的固定 `max_model_len=2560` 下跑的，
+  而 AIME `max_tokens=2048`，只给 prompt 留了 512 token。超过就会被 vLLM 静默压缩生成预算。
+  复核零 GPU：`python eval/run_eval.py --model <m> --datasets aime2024,aime2025 --plan-only`；
+  `need > 2560` 时用 auto 预算重跑这两个数据集（分钟级）。GSM8K/MATH-500（`max_tokens=1024`，
+  prompt 预算 1536）不受影响。
+- `results_master.md` 的 `截断率` / `空答案率` 两列为 `待回填`：数据在 bigdog01 的
+  `outputs/eval/*/summary.json`（`outputs/` 不入 git），用 `analysis/emit_results_row.py`
+  一条命令回填，不需要 GPU。本机读不到那批产物，所以没有填数字。
+- MMLU-Pro（可选回归检查）代码与口径已固定，W2 未跑。
+- 3090 未到位，两卡 profiling 对比未执行。
