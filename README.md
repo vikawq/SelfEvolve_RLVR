@@ -2,7 +2,7 @@
 
 在单张消费级 GPU 上构建**可复现、可审计、跑得快**的 RLVR 自我进化后训练系统：不使用人工标注训练数据，由模型自己出题、自己解题、自我提升；同时系统研究它在什么条件下有效、什么条件下会被奖励欺骗。
 
-> 本仓库当前进度：**W2（Baseline 复现、评测 harness、Profiling）**。RLVR = Reinforcement Learning with Verifiable Rewards。
+> 本仓库当前进度：**W3（严格 Verifier：训练奖励与评测共用的判分器）**。RLVR = Reinforcement Learning with Verifiable Rewards。
 
 ## 环境搭建
 
@@ -77,6 +77,33 @@ bash scripts/run_eval.sh <ckpt> --limit 20 --datasets gsm8k   # 冒烟
 
 评测口径、数据集来源、AIME 的 avg@16 定义见 [`eval/datasets.md`](eval/datasets.md)；
 profiling 解析见 `analysis/parse_profile.py`，报告在 `reports/profiling_baseline_4080.md`。
+
+## 严格 Verifier（W3）
+
+判分器只有一份实现：`src/selfevolve/verifier/math_verifier.py`。**训练奖励和评测都调它**
+（协议 §4：训练奖励与评测必须共用同一严格 verifier）。
+
+```python
+from selfevolve.verifier.math_verifier import verify
+
+r = verify("Therefore, Janet makes $18 every day.", "18")
+# VerifyResult(score=1.0, extracted='18', parse_ok=True, reason='correct')
+```
+
+- 规则：只奖励正确性（1.0 / 0.0）；抽取顺序 `\boxed{}` → `####` → 收尾句 → 结论句；
+  多候选、截断、无答案一律判错；单次判定 5 秒超时。
+- 训练侧接线：`configs/EXP-W03-01-strict-reward-smoke.sh`
+  （`reward.custom_reward_function.path=src/selfevolve/rewards/strict_reward.py`）。
+- 评测侧：`eval/harness/scoring.py` 是它的薄封装；`eval/rescore.py --suffix strict` 可零 GPU 重打分。
+- 验证报告：[`reports/verifier_validation.md`](reports/verifier_validation.md)
+  （三判分器对比、人工核对包、已知限制）；与上游 Math-Verify 的差异记在
+  `docs/troubleshooting.md §5`。
+
+```bash
+pytest -q                                   # 164 用例（含数学判分的等价形式/对抗样本/边界）
+python analysis/verifier_compare.py         # 三判分器对比 + 人工核对包
+python analysis/verifier_bench.py --n 500   # 单样本耗时（mean / p99）
+```
 
 ## 目录结构
 
