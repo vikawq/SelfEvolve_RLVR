@@ -285,3 +285,100 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
   并在说明里留更正记录。`week02_summary.md` 的表述本来就是对的，补上证据来源。
 - **教训**：同一个参数在上游配置里出现两次（训练/验证各一套）时，必须写清引用的是哪一处 + 文件 +
   commit。文档之间互相矛盾时，先去上游配置取证，不要选一个"看起来合理"的。
+
+---
+
+## 5. W3：严格 verifier 与上游/文档的差异
+
+### 5.1 自定义奖励的配置键
+
+- **任务包写法**：`custom_reward_function.path` / `custom_reward_function.name`（顶层）。
+- **v0.9.1 实际**：`reward.custom_reward_function.path` / `.name`
+  （`verl/trainer/config/reward/reward.yaml`；顶层同名键只出现在 `legacy_reward_impl.yaml`，
+  `get_custom_reward_fn()` 读的是 `config.reward.get("custom_reward_function")`）。
+- **调用约定**（`verl/experimental/reward_loop/reward_manager/naive.py`）：关键字调用
+  `compute_score(data_source=..., solution_str=..., ground_truth=..., extra_info=...)`；
+  `verl/trainer/main_eval.py` 则是位置调用。返回 float 或 dict 都支持，dict 时取 `result["score"]`，
+  其余键进 `reward_extra_info`（落 wandb / parquet）。
+- **处理**：`src/selfevolve/rewards/strict_reward.py` 的签名
+  `compute_score(data_source, solution_str, ground_truth, extra_info=None, **kwargs)` 两种调用都兼容；
+  配置用 `reward.custom_reward_function.*`（见 `configs/EXP-W03-01-strict-reward-smoke.sh`）。
+- **自带并行**：`reward.num_workers=8`，`RewardLoopManager` 起 8 个 reward worker 分片——不需要自建并行。
+
+### 5.2 Math-Verify 的超时在子线程里不可用
+
+- **现象**：`math_verify.parse(..., parsing_timeout=5)` 在非主线程抛
+  `ValueError: Math-Verify 'parse' function doesn't support threaded environment due to usage of signal.alarm()`。
+  Windows 上则是每次调用 `multiprocessing.Process`（官方 docstring 自己说 "huge performance penalty"）。
+- **原因**：`math_verify/utils.py::timeout` 在 POSIX 用 `signal.alarm`（只对主线程有效），
+  Windows 回退到多进程。
+- **训练侧为什么会踩到**：verl 的 `NaiveRewardManager.run_single` 用
+  `self.loop.run_in_executor(None, ...)` 调 `compute_score`，**跑在线程池里**，不是主线程。
+- **解法**：严格 verifier 自己管超时——`parse(parsing_timeout=None)`、`verify(timeout_seconds=None)`，
+  外层 `_run_with_timeout`：POSIX 主线程用 `signal.setitimer`，其余情况用进程池 +
+  `future.result(timeout=5)`；进程池基础设施出错时退化为同步执行（判定结果不变，只是没有超时保护）。
+- **附带**：关掉上游超时会触发它每次打印 "Timeout is disabled ..." 到 stdout，已在 import 时把
+  `math_verify.parser/grader.TIMEOUT_WARNING_SHOWN` 置位，保持训练日志干净。
+
+### 5.3 Math-Verify 的解析行为（实测，0.9.0）
+
+| 输入 | `parse` 结果 | 影响 |
+|---|---|---|
+| 裸 `460` | `[]` | gold 必须包成 `\boxed{460}`（W2 已处理，严格 verifier 也这么做） |
+| `\dfrac{3}{4}`（未包裹） | `[]` | 归一化层把 `\dfrac→\frac` |
+| `3.5\times 10^{3}`（未包裹） | `[10]`（只取到指数） | 归一化层自己算科学计数法 |
+| `1e3` | `[1*E*3]` | 同上 |
+| `3 or 5` | `[5]`（只取一个） | 多答案必须自己判，否则会被"任意匹配"混过去 |
+| `\boxed{3} and \boxed{5}` | `[{3,5}]` | 同上 |
+| `(3,5)` | `[\text{Interval.open}(3,5)]`（当成开区间） | 两侧同样处理时不影响相等性；但"坐标"语义丢失，已记录 |
+| `50\%` | `[50*(1/100), '50\%']`，而 `verify` 既能对 0.5 也能对 50 | 太宽松：归一化层统一把 `%` 当**单位**去掉（`50\% → 50`），与数据集 gold 的裸数字口径一致 |
+| `\begin{pmatrix} a \\ b \end{pmatrix}` | 解析失败 | 已知限制，见 `reports/verifier_validation.md §6` |
+
+### 5.4 非交互 ssh 启动训练没有 conda python
+
+- **现象**：`setsid nohup bash scripts/run_exp.sh EXP-W03-01-...` 立刻退出，
+  `configs/EXP-W02-01-baseline-gsm8k.sh: 行 75: python: 未找到命令`，`exit code: 127`。
+- **原因**：conda 是在 `~/.bashrc` 里初始化的，非交互 ssh 的 shell 不读它，`PATH` 里没有 `python`。
+  （W2 的实验是从交互式 shell 里启动的，所以没暴露。）
+- **解法**：
+  ```bash
+  source /home/angus/miniconda3/etc/profile.d/conda.sh && conda activate selfevolve && \
+  setsid nohup bash scripts/run_exp.sh <EXP-ID> > logs/<name>.out 2>&1 < /dev/null &
+  ```
+- **代价**：一次空跑（0 GPU·h，进程在 import 前就退出了）。
+
+### 5.5 用 PowerShell 写 UTF-8 文件会坏掉
+
+- **现象**：`Add-Content experiments/registry.csv "<中文行>"` 之后，文件不再是合法 UTF-8
+  （Python 读会报 `invalid UTF-8`，`file` 显示 `Non-ISO extended-ASCII`），那一行中文也变成乱码。
+- **原因**：Windows PowerShell 5.1 的 `Add-Content` 默认用系统 ANSI 代码页（GBK）写文件，
+  而仓库里所有文件都是 UTF-8。
+- **解法**：凡是写仓库里的文本文件，一律用项目 venv 的 python 或编辑器工具（`Path.write_text(..., encoding="utf-8")`），
+  不要用 `Add-Content` / `Out-File`。已把坏行用 python 重写并单独 commit。
+
+### 5.6 训练奖励第一次调用偏慢（29 ms）是进程池冷启动
+
+- **现象**：冒烟第 1 步 `timing_s/agent_loop/compute_score/mean ≈ 29 ms`、`max ≈ 0.53 s`，
+  比离线测的 1.05 ms 高了近 30 倍。
+- **原因**：8 个 reward worker 各自第一次调用时才创建进程池（spawn + import math-verify），
+  这批固定开销被摊到第 1 步的 320 个样本上。
+- **结论**：后续步回落到毫秒级；320 样本 × 1.05 ms ÷ 8 workers ≈ 0.04 s/step（0.02%），不构成瓶颈。
+  记录在此，避免下次把首次开销误判成"判分器太慢"。
+
+### 5.7 训练内 validation 的口径随奖励函数改变
+
+- **现象**：W3 冒烟的 `val-core/.../reward/mean@1` 与 W2 同 step 的数不可直接比较。
+- **原因**：verl 的训练内验证也用同一个 `custom_reward_function`（`trainer.val_before_train` /
+  `test_freq` 走 `_validate`，里面调用同一个 `compute_score`）。W2 用的是 verl 内置 GSM8K rule reward
+  （要求 `#### 数字`），W3 是严格 verifier（含结论句兜底），两者对同一批验证集的打分不同。
+- **处理**：W3 冒烟的 `critic/score/mean` 与 W2 对照时，必须说明这是"不同判分器下的 reward"；
+  评测口径的对照一律用 `outputs/eval/*` 的 harness 结果（同一 verifier 重打分）。
+
+### 5.8 严格 verifier 的"多答案"判定与 GSM8K 的 `####` 约定
+
+- **现象/决策**：模型可能在一条输出里写多个 `####`（先写草稿值再补全，或 `#### 15` 后跟 `-15`）。
+- **决策**：多个 `####` **不**判 `multiple_answers`，按"最后一个 `####` 之后是最终答案"取最后一个
+  （与 verl 内置判分、GSM8K 官方约定一致）；但多个 `\boxed{}` 互不一致时判 `multiple_answers`
+  （任务包明确要求）。
+- **代价**：`#### 15\n-15` 这种"最后一行是另一个值"的写法会取到 `-15`。抽样 420 条里出现 1 条，
+  已记入验证报告 §6 的已知限制。

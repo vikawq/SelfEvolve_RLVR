@@ -71,5 +71,17 @@ python analysis/emit_results_row.py --summary outputs/eval/<run>/summary.json \
 
 ## 口径
 
-见 [`datasets.md`](datasets.md)。测试集只用于评测；W3 换严格 verifier 后，本 harness 的
-判分实现整体替换并重评所有历史结果。
+见 [`datasets.md`](datasets.md)。测试集只用于评测；**W3 起判分器是
+`src/selfevolve/verifier/math_verifier.py`（与训练奖励共用同一实现，协议 §4）**，本 harness
+只是它的薄封装。W2 的 `math-verify` 口径（整段输出参与解析）已退役，但历史行保留在
+`reports/results_master.md` 里做对照审计；两套口径的逐样本差异见 `reports/verifier_validation.md`。
+
+用严格 verifier 重打分（不重新生成，零 GPU）：
+
+```bash
+python eval/rescore.py --run-dir outputs/eval/<run> --suffix strict \
+  --out outputs/eval/<run>/summary_strict.json
+```
+
+`--suffix` 决定逐样本输出名（`<dataset>.strict.jsonl`），避免覆盖 W2 的 `*.rescored.jsonl`；
+`--datasets` 可只重打分部分数据集。
