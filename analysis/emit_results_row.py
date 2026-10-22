@@ -39,10 +39,23 @@ def reported_stderr(entry: dict[str, Any]) -> float:
 
 
 def sampling_text(entry: dict[str, Any]) -> str:
-    gen = entry.get("generation", {})
+    gen = entry.get("generation") or {}
+    if not gen:
+        # 早于 W3 的 summary 没有 generation 字段（重打分脚本当时没写）。采样参数由数据集定义唯一确定，
+        # 这里从 eval/harness/data.DATASETS 回填，而不是手抄数字。
+        try:
+            from eval.harness.data import DATASETS
+
+            spec = DATASETS.get(entry.get("dataset", ""))
+        except Exception:  # pragma: no cover - 独立运行且没有 eval 包时
+            spec = None
+        if spec is not None:
+            gen = {"temperature": spec.temperature, "top_p": spec.top_p, "n": spec.n}
     temp = gen.get("temperature")
     top_p = gen.get("top_p")
     n = gen.get("n", entry.get("n_per_sample", 1))
+    if temp is None:
+        return f"temperature=?, top_p=?, n={n}"
     temp_s = "0" if temp == 0 else f"{temp}"
     return f"temperature={temp_s}, top_p={top_p}, n={n}"
 

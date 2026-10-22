@@ -89,6 +89,13 @@ def rescore_dataset(run_dir: Path, name: str, suffix: str = "rescored") -> dict:
         "num_generations": n_gen,
         "n_per_sample": spec.n,
         "prompt_template": spec.prompt_template,
+        # 采样参数来自数据集定义（重打分不重新生成，参数必须与原 run 一致才能进 results_master）
+        "generation": {
+            "temperature": spec.temperature,
+            "top_p": spec.top_p,
+            "n": spec.n,
+            "max_tokens": spec.max_tokens,
+        },
         "accuracy_over_generations": n_correct / n_gen,
         "truncation_rate": truncated / n_gen,
         "empty_answer_rate": empty / n_gen,
