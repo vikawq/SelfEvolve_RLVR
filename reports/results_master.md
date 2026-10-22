@@ -26,12 +26,16 @@
 | 2026-10-22 | EXP-W02-01-baseline-gsm8k | Qwen2.5-1.5B-Instruct + LoRA r32 @ `global_step_116`（merged） | MATH-500 | 500 | temperature=0, top_p=1.0, n=1 | greedy pass@1 | **0.4980** | ±0.0224 | n/a | 9.00% | 8.20% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | 同上 |
 | 2026-10-22 | EXP-W02-01-baseline-gsm8k | Qwen2.5-1.5B-Instruct + LoRA r32 @ `global_step_116`（merged） | AIME 2024 | 30 | temperature=0.6, top_p=0.95, n=16 | avg@16 | **0.0271** | ±0.0122 | 0.0670 | 11.46% | 8.12% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | 同上 |
 | 2026-10-22 | EXP-W02-01-baseline-gsm8k | Qwen2.5-1.5B-Instruct + LoRA r32 @ `global_step_116`（merged） | AIME 2025 | 30 | temperature=0.6, top_p=0.95, n=16 | avg@16 | **0.0000** | ±0.0000 | 0.0000 | 4.38% | 3.96% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | 同上 |
+| 2026-10-22 | EXP-W03-01-strict-reward-smoke | Qwen2.5-1.5B-Instruct + LoRA r32 @ `global_step_20`（20 步冒烟，严格奖励） | GSM8K test | 1319 | temperature=0, top_p=1.0, n=1 | greedy pass@1 | **0.7346** | ±0.0122 | n/a | 0.53% | 1.21% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | [3b5rwrv2](https://forge.coreweave.com/wandb/vika-liaowq-nanjing-university/selfevolve-rlvr/runs/3b5rwrv2) |
 
 ## 说明
 
 - **两套判分器的关系**：W2 的 `math-verify` 行（2026-10-21）与 W3 的 `strict` 行（2026-10-22）是**同一批生成结果**
   的两种打分，不是两次运行——W3 用 `eval/rescore.py --suffix strict` 从落盘 JSONL 重打分，**零 GPU**。
   对比分析见 `reports/verifier_validation.md` §5。
+- **20 步冒烟（EXP-W03-01）**：训练与评测共用严格 verifier，harness GSM8K 从基座 0.7149 涨到 **0.7346**
+  （+1.97，同一判分器、同一天评估），训练内验证 0.7309（step10）→ 0.7422（step20）。
+  只有 20 步，**不作精度结论**，作用是证明奖励接线正确、链路可训练。详见 `experiments/notes/EXP-W03-01-strict-reward-smoke.md`。
 - **严格判分带来的一处结论反转（重要）**：MATH-500 的 base→RL 差值从 W2 的 **+1.20** 变成 **−4.20**
   （差值的 stderr ≈ ±3.16，统计上不显著）。原因不是判分器 bug：RL checkpoint 在域外的 MATH-500 上有
   36/500 条"最终答案写错、正确数字只出现在推理里"（例如推理得 `-50` 却写 `#### 50`），
