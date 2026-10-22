@@ -418,3 +418,22 @@ def test_timeout_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_scorer_version_is_pinned_to_math_verify() -> None:
     assert SCORER_VERSION.startswith("selfevolve-strict-verifier-")
     assert "math-verify-" in SCORER_VERSION
+
+
+def test_verify_many_matches_single_verify() -> None:
+    """批量接口用于重打分，结果必须与逐条调用一致。"""
+    from selfevolve.verifier.math_verifier import verify_many
+
+    pairs = [("#### 42", "42"), ("#### 41", "42"), ("no answer", "1"), ("#### 3 or 5", "3")]
+    batch = verify_many(pairs)
+    single = [verify(r, g) for r, g in pairs]
+    assert [b.to_dict() for b in batch] == [s.to_dict() for s in single]
+
+
+def test_timeout_mode_none_still_judges_correctly(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`STRICT_VERIFIER_TIMEOUT_MODE=none` 是本地调试用的降级路径，判定结果不能变。"""
+    import selfevolve.verifier.math_verifier as mv
+
+    monkeypatch.setattr(mv, "TIMEOUT_MODE", "none")
+    assert mv.verify("#### \\frac{1}{2}", "0.5").reason == REASON_CORRECT
+    assert mv.verify("#### 3", "4").reason == REASON_WRONG
