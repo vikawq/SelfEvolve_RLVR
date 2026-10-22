@@ -31,6 +31,13 @@ def _sample_std(values: list[float]) -> float:
     return math.sqrt(sum((v - mean) ** 2 for v in values) / (len(values) - 1))
 
 
+def _binomial_stderr(p: float, n: int) -> float:
+    """pass@1 的误差要报 binomial stderr；0/1 样本标准差恒在 0.4–0.5，没有信息量。"""
+    if n <= 0:
+        return 0.0
+    return math.sqrt(max(p * (1.0 - p), 0.0) / n)
+
+
 def rescore_dataset(run_dir: Path, name: str) -> dict:
     spec = DATASETS[name]
     src = run_dir / f"{name}.jsonl"
@@ -62,14 +69,18 @@ def rescore_dataset(run_dir: Path, name: str) -> dict:
             rec["outputs"] = outputs
             rec["accuracy"] = accuracy
             fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    mean_acc = sum(per_question) / len(per_question)
     return {
         "dataset": name,
         "display_name": spec.display_name,
         "num_samples": len(per_question),
         "metric": spec.metric,
-        "score": sum(per_question) / len(per_question),
+        "score": mean_acc,
         "std": _sample_std(per_question),
         "stderr": _sample_std(per_question) / math.sqrt(len(per_question)),
+        # 与 run_eval.py 保持同一套误差口径，重打分后的行可以直接进 results_master。
+        "binomial_stderr": _binomial_stderr(mean_acc, len(per_question)) if spec.n == 1 else None,
+        "reported_stderr_kind": "binomial" if spec.n == 1 else "per_question_sample",
         "num_generations": n_gen,
         "n_per_sample": spec.n,
         "prompt_template": spec.prompt_template,
