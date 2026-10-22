@@ -113,27 +113,45 @@ flowchart TB
 ### 4.1 verifier（W3，全项目的地基）
 
 ```python
-@dataclass(frozen=True)
+@dataclass
 class VerifyResult:
     score: float            # 1.0 正确 / 0.0 其它；格式奖励默认 0 且不启用
     extracted: str | None   # 抽取到的最终答案
     parse_ok: bool
     reason: str             # correct | wrong | no_answer | multiple_answers | truncated | timeout
 
-def verify(response: str, ground_truth: str, *, data_source: str,
-           timeout_s: float = 5.0) -> VerifyResult: ...
+def verify(response: str, ground_truth: str, *,
+           finished: bool | None = None,
+           timeout_s: float | None = None) -> VerifyResult: ...
 ```
 
-设计原则（W3）：**只奖励正确性；宁严勿松；确定性 + 超时保护**。抽取优先级：最后一个 `\boxed{}`（处理嵌套）→ GSM8K 的 `#### 答案` → 结尾的 "The answer is ..."。多候选、推理中途出现正确数字、截断 —— 一律判错。
+设计原则（W3）：**只奖励正确性；宁严勿松；确定性 + 超时保护**。抽取优先级：最后一个 `\boxed{}`（处理嵌套）→ GSM8K 的 `#### 答案` → 结尾的 "The answer is ..." → 结尾结论句（第四级，见下）。多候选、推理中途出现正确数字、截断 —— 一律判错。
+
+**W3 实际实现与 W1 契约的差异（改动已记入周报）**：
+
+1. **没有 `data_source` 参数**。verifier 只做数学答案判定；选择题（MMLU-Pro）的字母判定留在适配层
+   （`eval/harness/scoring.py::score_mc`、`src/selfevolve/rewards/strict_reward.py`），
+   因为选择题根本不需要 `parse/verify` 这套等价判断，塞进来只会让"唯一标准"多一条不走同一路径的分支。
+2. **多了 `finished`**。评测侧能从 `finish_reason` 知道输出是否被 `max_tokens` 截断；训练侧拿不到，
+   传 `None` 走文本推断（未闭合的 `\boxed{` / 尾部未闭合的 `\[` / 尾部无句末标点的长文本）。
+3. **多了第四级抽取"结尾结论句"**。只用前三级时，Qwen2.5-1.5B-Instruct 有 45% 的 GSM8K 输出
+   抽不到答案（它不写 `####`），base GSM8K 会从 0.72 掉到 0.38 —— 那是"格式不合规"不是"能力不行"。
+   追加的规则很保守：必须是最后一句、必须有结论引导词或是短句、句内只有一个可判定的值，
+   且**有 marker 时不参与**。影响量化见 `reports/verifier_validation.md §7`。
+4. `VerifyResult` 不是 `frozen=True`（构造后不再被修改，但没有必要冻结）；字段与理由保持契约不变。
 
 ### 4.2 rewards（W3/W4/W5，唯一与 verl 耦合的地方）
 
 ```python
 def compute_score(data_source: str, solution_str: str, ground_truth: str,
-                  extra_info: dict | None = None) -> float | dict: ...
+                  extra_info: dict | None = None, **kwargs) -> float | dict: ...
 ```
 
-通过 `custom_reward_function.path` / `.name` 接入（签名以安装版本为准）。宽松版 `loose_L*` 与防御 `D*` 共用同一签名，**只换判分口径，不换管线** —— 这是 W4/W5 对照实验成立的前提。若奖励计算超过单步耗时 5%，改多进程或用框架自带的并行 reward manager。
+通过 **`reward.custom_reward_function.path` / `.name`** 接入（verl v0.9.1 的实际键名；
+W1 写作顶层 `custom_reward_function.*`，见 `docs/troubleshooting.md §5.1`）。宽松版 `loose_L*` 与
+防御 `D*` 共用同一签名，**只换判分口径，不换管线** —— 这是 W4/W5 对照实验成立的前提。
+若奖励计算超过单步耗时 5%，改多进程或用框架自带的并行 reward manager（本版本自带
+`reward.num_workers=8`；W3 实测 reward ≈ 0.04 s/step，不需要额外并行）。
 
 ### 4.3 solver / challenger（W6）
 
