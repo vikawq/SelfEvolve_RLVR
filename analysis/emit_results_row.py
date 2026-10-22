@@ -44,6 +44,11 @@ def sampling_text(entry: dict[str, Any]) -> str:
         # 早于 W3 的 summary 没有 generation 字段（重打分脚本当时没写）。采样参数由数据集定义唯一确定，
         # 这里从 eval/harness/data.DATASETS 回填，而不是手抄数字。
         try:
+            import sys
+
+            repo_root = str(Path(__file__).resolve().parents[1])
+            if repo_root not in sys.path:
+                sys.path.insert(0, repo_root)
             from eval.harness.data import DATASETS
 
             spec = DATASETS.get(entry.get("dataset", ""))
