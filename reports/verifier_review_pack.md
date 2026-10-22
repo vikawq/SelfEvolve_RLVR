@@ -21,14 +21,27 @@ python analysis/verifier_compare.py --n 300 --seed 42 --out reports/verifier_rev
 - 正确数字只出现在推理里、最终答案写错（`…= -50 … #### 50`）→ 算模型**错**；
 - 输出被 `max_tokens` 截断、没给出最终答案 → 算模型**错**（任务包要求截断判错）。
 
-判分器的准确性 = 它的判定与上面这个事实一致的比例。人工核对时请按这个口径填 `人工核对` 列；
-与 agent 初判不一致的，在 `修正建议` 里写理由即可。
+判分器的准确性 = 它的判定与上面这个事实一致的比例。
 
-统计口径（`reports/verifier_validation.md`）：准确率 = 判分器与人工核对一致的比例。
+## 怎么填
+
+每条下面都写了 **agent 初判**（自动跑出来的草稿）和它的理由。核对时只需要：
+
+1. 在 `reports/verifier_review_pack.csv` 的 **`human_verdict`** 列填 `1`（模型答对）或 `0`（模型答错）
+   —— 也接受 `对`/`错`、`true`/`false`、`yes`/`no`；
+2. 与 agent 初判不一致、或想留个理由时，写在 **`human_note`** 列；
+3. 跑 `python analysis/verifier_accuracy.py` 刷新准确率。
+
+**agent 初判不能替代人工核对**：它有 96/110 条是用 strict 自己的抽取结果当参考答案
+（`strict_extracted == gold` -> 判模型正确），对 strict 而言是循环论证。
+所以 `verifier_accuracy.py` 把两种口径分开报（`results_agent` / `results_human`），
+只有 `human_verdict` 填满 110 条之后，`human_review.status` 才会变成 `complete`，
+才能对外说"人工核对通过"。
 
 ---
 
 共 420 条抽样，其中三判分器不一致 **110** 条。
+人工核对进度：**0/110**。
 
 
 ## 1. `Qwen2.5-1.5B-Instruct/gsm8k/test/228#0`（gsm8k / Qwen2.5-1.5B-Instruct）
@@ -67,8 +80,8 @@ Therefore, it will take them 1 hour to complete the puzzle.
 #### Final Answer: 1
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 2. `Qwen2.5-1.5B-Instruct/gsm8k/test/563#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -97,8 +110,8 @@ To determine how much James spends on candles, we need to follow these steps:
 So, James spends $12 on candles.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 3. `Qwen2.5-1.5B-Instruct/gsm8k/test/501#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -141,8 +154,8 @@ Let's do the calculations:
 Therefore, the total yards of yarn they used altogether is **273 yards**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 4. `Qwen2.5-1.5B-Instruct/gsm8k/test/457#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -163,8 +176,8 @@ To determine the number of fairies remaining, we need to follow the steps given 
 Therefore, the final number of fairies remaining is **45**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 5. `Qwen2.5-1.5B-Instruct/gsm8k/test/1116#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -190,8 +203,8 @@ To find out how many students are enrolled in the calligraphy class this year, w
 So, the number of students enrolled in the calligraphy class this year is **60**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 6. `Qwen2.5-1.5B-Instruct/gsm8k/test/178#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -230,8 +243,8 @@ To solve this problem, let's break it down step by step:
 Therefore, the total number of crabs the three have together is **122**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 7. `Qwen2.5-1.5B-Instruct/gsm8k/test/1209#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -262,8 +275,8 @@ Now, we sum the water removed on each setting to find the total amount of water 
 Therefore, the total amount of water removed by the dehumidifier in Brian's basement is \(\boxed{29}\) liters.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 8. `Qwen2.5-1.5B-Instruct/gsm8k/test/65#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -297,8 +310,8 @@ eading in 4 weeks, let's break down the problem step by step.
 Therefore, the final answer is 36 hours.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 9. `Qwen2.5-1.5B-Instruct/gsm8k/test/61#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -330,8 +343,8 @@ Final amount paid = $1300 + $130 = $1430
 Therefore, the final answer is $1430.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 10. `Qwen2.5-1.5B-Instruct/gsm8k/test/191#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -362,8 +375,8 @@ To determine how many pounds of insects the flock of ten ducks need per day, we 
 Therefore, the flock of ten ducks needs **5 pounds of insects per day**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 11. `Qwen2.5-1.5B-Instruct/gsm8k/test/447#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -397,8 +410,8 @@ Since the difference is negative, Joey is winning by 5 points.
 Final answer: Joey is winning by \(\boxed{5}\) points.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 12. `Qwen2.5-1.5B-Instruct/gsm8k/test/476#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -426,8 +439,8 @@ To determine how many books each child received, we need to follow these steps:
 Therefore, each child received \(\boxed{5}\) books.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 13. `Qwen2.5-1.5B-Instruct/gsm8k/test/1232#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -455,8 +468,8 @@ To determine how many pomelos Eve gave away, we can follow these steps:
 Therefore, Eve gave away 15 pomelos.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 14. `Qwen2.5-1.5B-Instruct/gsm8k/test/1149#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -483,8 +496,8 @@ To determine how much Jen spends on fish food in the month of May, we need to fo
 Therefore, Jen spends $93 on fish food in the month of May.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 15. `Qwen2.5-1.5B-Instruct/gsm8k/test/859#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -514,8 +527,8 @@ To determine how much money Julieta and Rafaela received as tips altogether, we 
 Thus, the total amount of money that Julieta and Rafaela received as tips altogether is $1520.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 16. `Qwen2.5-1.5B-Instruct/gsm8k/test/451#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -564,8 +577,8 @@ on is:
 Therefore, the total cost for filling 170 balloons after the price increase is $11050.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 17. `Qwen2.5-1.5B-Instruct/gsm8k/test/919#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -607,8 +620,8 @@ Therefore, the total cost for filling 170 balloons after the price increase is $
 Therefore, the class was able to raise \(\boxed{90}\) dollars from the profit of selling lollipops.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 18. `Qwen2.5-1.5B-Instruct/gsm8k/test/569#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -639,8 +652,8 @@ Difference = $84 - $63 = $21.
 Therefore, Mitchell made $21 more selling lemonade than Liam that weekend.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 19. `Qwen2.5-1.5B-Instruct/gsm8k/test/326#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -687,8 +700,8 @@ So, the number of people who got on the bus at the terminal is \( 14 \).
 #### The final answer is: 14 people got on the bus at the terminal.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 20. `Qwen2.5-1.5B-Instruct/gsm8k/test/865#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -725,8 +738,8 @@ So, the number of people who got on the bus at the terminal is \( 14 \).
 Final answer: The rink has 23 yellow cars.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 21. `Qwen2.5-1.5B-Instruct/gsm8k/test/696#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -764,8 +777,8 @@ Final answer: The rink has 23 yellow cars.
 Therefore, the class is missing **145 points** to go on the trip.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 22. `Qwen2.5-1.5B-Instruct/gsm8k/test/318#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -795,8 +808,8 @@ To solve this problem, let's break it down step by step:
 Therefore, the total number of children in the classroom is 123.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 23. `Qwen2.5-1.5B-Instruct/gsm8k/test/440#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -824,8 +837,8 @@ Therefore, the total number of children in the classroom is 123.
 Therefore, the perimeter of Billie's room is \( \boxed{98} \) feet.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 24. `Qwen2.5-1.5B-Instruct/gsm8k/test/704#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -868,8 +881,8 @@ Therefore, the final answer is:
 \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 25. `Qwen2.5-1.5B-Instruct/gsm8k/test/940#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -895,8 +908,8 @@ Therefore, the total number of children in the drill is:
 \[ \boxed{280} \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 26. `Qwen2.5-1.5B-Instruct/gsm8k/test/1098#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -925,8 +938,8 @@ So, Jeff is 30 years old. The final answer is:
 \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 27. `Qwen2.5-1.5B-Instruct/gsm8k/test/775#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -959,8 +972,8 @@ Finally, let's subtract the total number of wheels needed from the number of whe
 Therefore, the number of wheels left after Henry assembles all the toys is 276 wheels.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 28. `Qwen2.5-1.5B-Instruct/gsm8k/test/161#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -994,8 +1007,8 @@ Finally, let's add up all the fish:
 Therefore, the total number of fish they were able to catch is \(\boxed{32}\).
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 29. `Qwen2.5-1.5B-Instruct/gsm8k/test/1130#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1035,8 +1048,8 @@ Therefore, the total number of fish they were able to catch is \(\boxed{32}\).
 Therefore, the total weight of the crayons and the boxes is 25 pounds.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 30. `Qwen2.5-1.5B-Instruct/gsm8k/test/600#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1067,8 +1080,8 @@ To determine the weight Jamaal now uses, let's break down the problem step by st
 Therefore, the final weight Jamaal uses is \(\boxed{10}\) pounds.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 31. `Qwen2.5-1.5B-Instruct/gsm8k/test/1287#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1098,8 +1111,8 @@ Now, let's calculate the total age of all the siblings:
 Therefore, the total age of all these siblings is \(\boxed{84}\).
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 32. `Qwen2.5-1.5B-Instruct/gsm8k/test/1266#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1133,8 +1146,8 @@ p:
 Therefore, the total amount of dog food needed in a week is **147 kilograms**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 33. `Qwen2.5-1.5B-Instruct/gsm8k/test/1182#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1159,8 +1172,8 @@ To determine how many books Bob can buy per school, we need to follow these step
 Final answer: Bob can buy 1800 books per school.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 34. `Qwen2.5-1.5B-Instruct/gsm8k/test/393#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1189,8 +1202,8 @@ Final answer: Bob can buy 1800 books per school.
 Therefore, the final answer is \( \boxed{20\%} \).
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 35. `Qwen2.5-1.5B-Instruct/gsm8k/test/142#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1217,8 +1230,8 @@ Jordan earns $10 per hour at his part-time job.
 Therefore, if Jordan spent his video game time working instead, he would earn $140 in one week.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 36. `Qwen2.5-1.5B-Instruct/gsm8k/test/466#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1256,8 +1269,8 @@ late the total cost for each of them after applying their respective discounts.
 Kelly paid $1.00 more than Becky.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，手工判定）——结尾 'Kelly paid $1.00 more'，数值 1.00 == gold 1
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 37. `Qwen2.5-1.5B-Instruct/gsm8k/test/592#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1288,8 +1301,8 @@ To determine how much more expensive the boots are on eBay compared to Amazon, w
 The boots work out to be $1 more expensive on eBay.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 38. `Qwen2.5-1.5B-Instruct/gsm8k/test/206#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1324,8 +1337,8 @@ Therefore, the final answer is:
 \[ \boxed{860} \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 39. `Qwen2.5-1.5B-Instruct/gsm8k/test/928#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1380,8 +1393,8 @@ Therefore, the average number of Junebugs that Rita removes per day is 60.
 #### The final answer is: 60
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 40. `Qwen2.5-1.5B-Instruct/gsm8k/test/333#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1421,8 +1434,8 @@ To find the cost difference between the two offers, subtract the total cost of C
 Therefore, the cost difference between the two offers is **$100**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 41. `Qwen2.5-1.5B-Instruct/gsm8k/test/758#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1450,8 +1463,8 @@ So, after applying the 5% discount, you will pay $133.
 #### Final Answer: $133
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 42. `Qwen2.5-1.5B-Instruct/gsm8k/test/727#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1482,8 +1495,8 @@ cars.
 Therefore, the final answer is \( \boxed{112} \).
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 43. `Qwen2.5-1.5B-Instruct/gsm8k/test/429#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1525,8 +1538,8 @@ Therefore, the total number of letters in Indras and her sister's names is:
 \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 44. `Qwen2.5-1.5B-Instruct/gsm8k/test/1247#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1542,8 +1555,8 @@ Brendan started with 10 marbles. He dropped half of them, so he lost 10 / 2 = 5 
 #### The final answer is 7 marbles.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 45. `Qwen2.5-1.5B-Instruct/gsm8k/test/350#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1576,8 +1589,8 @@ Now, we sum up all the hours:
 Therefore, the total number of hours Peyton's after-work activities will take is \(\boxed{8}\).
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 46. `Qwen2.5-1.5B-Instruct/gsm8k/test/1093#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1617,8 +1630,8 @@ nd West walls: 5 feet wide and 8 feet high.
 Therefore, the total cost to paint the room is \(\boxed{144}\) dollars.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 47. `Qwen2.5-1.5B-Instruct/gsm8k/test/334#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1653,8 +1666,8 @@ To determine how many guns each person would have if they shared them equally, w
 So, if they were to share their guns equally, each person would have 6 guns.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 48. `Qwen2.5-1.5B-Instruct/gsm8k/test/946#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1683,8 +1696,8 @@ To determine how many loaves of bread the bakery has, we need to follow these st
 Therefore, the bakery has 450 loaves of bread.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 49. `Qwen2.5-1.5B-Instruct/gsm8k/test/552#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1713,8 +1726,8 @@ To calculate the amount of money Antonella earned, we need to break down the com
 Therefore, the final answer is $450.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 50. `Qwen2.5-1.5B-Instruct/gsm8k/test/449#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1748,8 +1761,8 @@ Therefore, the final answer is:
 \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 51. `Qwen2.5-1.5B-Instruct/gsm8k/test/664#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1783,8 +1796,8 @@ To determine how many recipes John learns, we need to follow these steps:
 Therefore, John learns \(\boxed{32}\) recipes.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 52. `Qwen2.5-1.5B-Instruct/gsm8k/test/469#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1809,8 +1822,8 @@ To determine how many pans worth of cupcakes Mary should bake, we need to follow
 So, Mary should bake **4 pans** worth of cupcakes.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 53. `Qwen2.5-1.5B-Instruct/gsm8k/test/821#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1841,8 +1854,8 @@ To determine the total number of cars Hunter counted during lunch break, we need
 Therefore, the total number of cars Hunter counted during lunch break is \(\boxed{35}\).
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 54. `Qwen2.5-1.5B-Instruct/gsm8k/test/135#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1877,8 +1890,8 @@ To determine how many video games Bobby has, we need to follow these steps:
 So, Bobby has 40 video games.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 55. `Qwen2.5-1.5B-Instruct/gsm8k/test/432#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1918,8 +1931,8 @@ Therefore, the final answer is:
 \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 56. `Qwen2.5-1.5B-Instruct/gsm8k/test/644#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1940,8 +1953,8 @@ To determine the age of Steve's son's wife, let's break down the information ste
 Therefore, the final answer is \(29\).
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 57. `Qwen2.5-1.5B-Instruct/gsm8k/test/435#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1963,8 +1976,8 @@ Ray shared these 20 lollipops equally with his four friends. To find out how man
 So, each of Ray's friends received 5 lollipops.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 58. `Qwen2.5-1.5B-Instruct/gsm8k/test/1316#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -1996,8 +2009,8 @@ To determine the total cost Mark paid for the new radiator and the installation,
 Therefore, the final answer is \( \boxed{230} \).
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 59. `Qwen2.5-1.5B-Instruct/gsm8k/test/939#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2043,8 +2056,8 @@ Now, let's calculate the total number of letters:
 Therefore, the total number of letters in the words they've spelled after the ten rounds is **650**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 60. `Qwen2.5-1.5B-Instruct/gsm8k/test/292#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2079,8 +2092,8 @@ Therefore, the total number of letters in the words they've spelled after the te
 Therefore, Susan earns \(\boxed{75}\) dollars for the online task.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 61. `Qwen2.5-1.5B-Instruct/gsm8k/test/542#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2117,8 +2130,8 @@ To determine how much change Verna received, we need to calculate the total cost
 Therefore, the final answer is $7.00.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，手工判定）——结尾 'Change = ... = $7.00'，gold 7
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 62. `Qwen2.5-1.5B-Instruct/gsm8k/test/1103#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2152,8 +2165,8 @@ So, the total number of jellyfish in the tank is \( 90 \).
 #### The final answer is: 90 jellyfish
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 63. `Qwen2.5-1.5B-Instruct/gsm8k/test/877#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2200,8 +2213,8 @@ So, the total number of jellyfish in the tank is \( 90 \).
 \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 64. `Qwen2.5-1.5B-Instruct/gsm8k/test/817#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2223,8 +2236,8 @@ Now, we subtract the 48 cupcakes he already has from the total number of cupcake
 Paul should buy 15 more cupcakes.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 65. `Qwen2.5-1.5B-Instruct/gsm8k/test/741#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2250,8 +2263,8 @@ A few minutes later, 20 more birds joined the fearless birds. To find the total 
 Therefore, the final answer is 28 birds.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 66. `Qwen2.5-1.5B-Instruct/gsm8k/test/283#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2287,8 +2300,8 @@ tones.
 Thus, Katerina uses **68** sterling silver beads per necklace.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 67. `Qwen2.5-1.5B-Instruct/gsm8k/test/1043#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2321,8 +2334,8 @@ To find the total population of South America, we need to follow these steps:
 Therefore, the total population of South America is **130,000 people**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 68. `Qwen2.5-1.5B-Instruct/gsm8k/test/1010#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2365,8 +2378,8 @@ To determine how many more laps Bethany can run compared to Quinn, we need to ca
 Therefore, Bethany can run 5 more laps than Quinn.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 69. `Qwen2.5-1.5B-Instruct/gsm8k/test/186#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2397,8 +2410,8 @@ of straw for rabbits = 20 pieces.
 Therefore, the final answer is: **5**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 70. `Qwen2.5-1.5B-Instruct/gsm8k/test/96#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2428,8 +2441,8 @@ Step 3: Calculate the difference in sleep hours between Harry and James.
 Therefore, Harry slept 3 more hours than James.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 71. `Qwen2.5-1.5B-Instruct/gsm8k/test/224#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2460,8 +2473,8 @@ To determine the total cost of the rentals, we need to calculate the cost for ea
 Therefore, the final answer is \( \boxed{180} \).
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 72. `Qwen2.5-1.5B-Instruct/gsm8k/test/1285#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2505,8 +2518,8 @@ Now, let's subtract:
 Therefore, the number of meals Mamou has left to distribute is 1,218.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 73. `Qwen2.5-1.5B-Instruct/gsm8k/test/1221#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2536,8 +2549,8 @@ ow these steps:
 Therefore, Aiden will need **10 tablespoons** of his secret steakhouse seasoning to make 80 meatballs.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 74. `Qwen2.5-1.5B-Instruct/gsm8k/test/130#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2562,8 +2575,8 @@ So, the final number of elves left is 30.
 #### The final answer is: 30
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 75. `Qwen2.5-1.5B-Instruct/gsm8k/test/788#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2593,8 +2606,8 @@ Since the result is negative, it means John has more money than he needs. He act
 Final answer: John is not missing any money. He has $100 more than the cost of the trip.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 76. `Qwen2.5-1.5B-Instruct/gsm8k/test/1220#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2632,8 +2645,8 @@ Therefore, the longer piece is 32 feet long.
 #### The final answer is: 32
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 77. `Qwen2.5-1.5B-Instruct/gsm8k/test/958#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2664,8 +2677,8 @@ To find out how many people really attended the concert, we need to work backwar
 So, the actual number of people who attended the concert is 40.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 78. `Qwen2.5-1.5B-Instruct/gsm8k/test/1083#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2698,8 +2711,8 @@ vidually, we need to calculate the total cost of buying bananas individually and
 Therefore, Jenny saved $2.00 by buying the bananas in bunches instead of individually.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，手工判定）——结尾 'Jenny saved $2.00'，gold 2
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 79. `Qwen2.5-1.5B-Instruct/gsm8k/test/514#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2746,8 +2759,8 @@ Now that we have the cost of the lot, we can find the cost of the house using th
 So, the house costs $90,000.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 80. `Qwen2.5-1.5B-Instruct/gsm8k/test/23#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2776,8 +2789,8 @@ Since the problem does not specify the original length of the candle, the final 
 \[ \boxed{L - 8} \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答错**（`0`，手工判定）——模型答 L-8（用 L 表示），gold 是数值 8：模型没有给出题目要的数值
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 81. `Qwen2.5-1.5B-Instruct/gsm8k/test/234#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2813,8 +2826,8 @@ To determine how many vines Steve needs, let's break down the problem step by st
 Therefore, Steve needs **21 vines** to meet his weekly tomato consumption.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 82. `Qwen2.5-1.5B-Instruct/gsm8k/test/1099#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2846,8 +2859,8 @@ time it takes for each slide and then find the difference between these times.
 Therefore, it takes 2 minutes longer to ride the biggest waterslide compared to the second biggest waterslide.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 83. `Qwen2.5-1.5B-Instruct/gsm8k/test/890#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2891,8 +2904,8 @@ Therefore, the final answer is:
 \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 84. `Qwen2.5-1.5B-Instruct/gsm8k/test/323#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2922,8 +2935,8 @@ we need to consider the effects of both the cooling and the addition of cream on
 Therefore, the final answer is 75 milliliters weaker.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 85. `Qwen2.5-1.5B-Instruct/gsm8k/test/929#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2957,8 +2970,8 @@ the difference between these distances.
 Therefore, the bus traveled 60 miles farther than the car.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 86. `Qwen2.5-1.5B-Instruct/gsm8k/test/6#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2995,8 +3008,8 @@ To solve this problem, we need to determine the number of sheep each city has an
 Therefore, the total number of sheep in Toulouse, Charleston, and Seattle is **260**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 87. `Qwen2.5-1.5B-Instruct/gsm8k/test/1025#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3021,8 +3034,8 @@ To solve this problem, let's break it down step by step:
 Therefore, the friends found 30 eggs.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 88. `Qwen2.5-1.5B-Instruct/gsm8k/test/365#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3056,8 +3069,8 @@ Therefore, the final answer is:
 \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 89. `Qwen2.5-1.5B-Instruct/gsm8k/test/1039#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3087,8 +3100,8 @@ Since Jim needs two pieces of fabric, we multiply the area of one piece by 2:
 Therefore, Jim needs to buy 160 square feet of fabric.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 90. `Qwen2.5-1.5B-Instruct/gsm8k/test/217#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3114,8 +3127,8 @@ Step 2: Add the number of roses to the number of dahlias to get the total number
 Therefore, the total number of flowers in the vase is 15.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 91. `Qwen2.5-1.5B-Instruct/gsm8k/test/1280#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3143,8 +3156,8 @@ So, it took Anna 7 hours to finish the puzzle.
 #### Final Answer: 7 hours
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 92. `Qwen2.5-1.5B-Instruct/gsm8k/test/1308#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3170,8 +3183,8 @@ To find the total number of eggs in both baskets, we can follow these steps:
 So, the final answer is 30 eggs in both baskets put together.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 93. `Qwen2.5-1.5B-Instruct/gsm8k/test/765#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3215,8 +3228,8 @@ So, the final answer is:
 \]
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 94. `Qwen2.5-1.5B-Instruct/gsm8k/test/330#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3259,8 +3272,8 @@ So, the final answer is:
 Therefore, the customer paid \(\boxed{31}\) dollars on this shopping trip.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 95. `Qwen2.5-1.5B-Instruct/gsm8k/test/1104#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3285,8 +3298,8 @@ To find out how old Caroline is, we need to follow the relationships given in th
 So, Caroline is 24 years old.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 96. `Qwen2.5-1.5B-Instruct/gsm8k/test/1086#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3320,8 +3333,8 @@ So, Caroline is 24 years old.
 Therefore, Marcel earned a total of $131,250 from selling bicycles during that month.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 97. `Qwen2.5-1.5B-Instruct/gsm8k/test/663#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3353,8 +3366,8 @@ Now, we subtract the newspapers delivered to District A and District C from the 
 So, James delivers 193 newspapers to District B.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 98. `Qwen2.5-1.5B-Instruct/gsm8k/test/39#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3382,8 +3395,8 @@ er than she can walk, her walking speed is \(6 / 4 = 1.5\) miles per hour.
 Therefore, the final answer is \(\boxed{18}\).
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 99. `Qwen2.5-1.5B-Instruct/gsm8k/test/229#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3420,8 +3433,8 @@ shlyn took some home:**
 So, the number of watermelons that were not ready to be harvested after the two weeks is **21**.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 100. `EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/832#0`（gsm8k / EXP-W02-01-baseline-gsm8k-global_step_116）
 
@@ -3445,8 +3458,8 @@ Roy's savings = $30.00 + 0.40 * $30.00 = $30.00 + $12.00 = $42.00
 Therefore, the final answer is: #### 42.00
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，手工判定）——`#### 42.00`，2.00 形式的数值等价
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 101. `EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/584#0`（gsm8k / EXP-W02-01-baseline-gsm8k-global_step_116）
 
@@ -3481,8 +3494,8 @@ Since there are 90 contacts in a box, the cost per pair (2 contacts) = $90.00 / 
 #### 2.00
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，手工判定）——`#### 2.00`，数值等价
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 102. `EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/164#0`（gsm8k / EXP-W02-01-baseline-gsm8k-global_step_116）
 
@@ -3510,8 +3523,8 @@ Since the result is negative, it means she will actually lose $15 if she hires t
 -15
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，手工判定）——`#### 15` 后紧跟 `-15`：模型先声明 15（=gold）再补 -15，判为**模型正确**（strict 的'最后一行优先'在这里误判，已记入验证报告 §6 的已知限制）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 103. `EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/1083#0`（gsm8k / EXP-W02-01-baseline-gsm8k-global_step_116）
 
@@ -3541,8 +3554,8 @@ Savings = $32.00 - $30.00 = $2.00
 #### 2.00
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，手工判定）——`#### 2.00`，数值等价
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 104. `Qwen2.5-1.5B-Instruct/test/prealgebra/1436.json#0`（math500 / Qwen2.5-1.5B-Instruct）
 
@@ -3585,8 +3598,8 @@ So, to find out how many Trinkets are in 24 Blinkets:
 Therefore, 56 Drinkets are equivalent to 6 Trinkets.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，手工判定）——结尾 '56 Drinkets are equivalent to 6 Trinkets'，gold 6；句内另有一个题面数字 56，strict 因'结论句里有多个值'放弃抽取 -> no_answer（已知限制）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 105. `Qwen2.5-1.5B-Instruct/test/intermediate_algebra/894.json#0`（math500 / Qwen2.5-1.5B-Instruct）
 
@@ -3618,8 +3631,8 @@ r^2 = 1 - \frac{1}{k} + y^2.
 Since the circle is tangent to the ellipse at two points on the \(
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答错**（`0`，手工判定）——finish_reason=length，输出在推导中途被截断（未给出最终答案）；任务包要求截断判错
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 106. `EXP-W02-01-baseline-gsm8k-global_step_116/test/counting_and_probability/525.json#0`（math500 / EXP-W02-01-baseline-gsm8k-global_step_116）
 
@@ -3644,8 +3657,8 @@ The final answer, after performing the necessary calculations, is:
 This is the number of ways to arrange 7 people around a round table such that Pierre, Rosa, and Thomas are not next to each other.
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 107. `EXP-W02-01-baseline-gsm8k-global_step_116/test/intermediate_algebra/1791.json#0`（math500 / EXP-W02-01-baseline-gsm8k-global_step_116）
 
@@ -3677,8 +3690,8 @@ Therefore, the value of \( x \) that Archimedes should choose is \( -\frac{3}{8}
 #### 8#### 8
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答错**（`0`，手工判定）——模型 `#### 8`，gold -3/8：模型错误（W2 口径因全文匹配 -3/8 而误判为对）
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 108. `EXP-W02-01-baseline-gsm8k-global_step_116/test/algebra/864.json#0`（math500 / EXP-W02-01-baseline-gsm8k-global_step_116）
 
@@ -3724,8 +3737,8 @@ So, the midpoint of the line segment is \((-1, 6)\).
 #### 6
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答错**（`0`，手工判定）——模型 `#### 6`，gold (-1,6)：模型只给了纵坐标
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 109. `EXP-W02-01-baseline-gsm8k-global_step_116/test/number_theory/22.json#0`（math500 / EXP-W02-01-baseline-gsm8k-global_step_116）
 
@@ -3758,8 +3771,8 @@ Therefore, there is only one distinct possible value for B.
 1
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答错**（`0`，手工判定）——模型 `#### 1`，gold 2：模型错误
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）
 
 ## 110. `EXP-W02-01-baseline-gsm8k-global_step_116/test/algebra/1275.json#0`（math500 / EXP-W02-01-baseline-gsm8k-global_step_116）
 
@@ -3795,5 +3808,5 @@ So, the simplified result with a rational denominator is \(\frac{\sqrt{3}}{3}\).
 #### 3/3
 ```
 
-- agent 初判：待填
-- 人工核对：
+- agent 初判：**模型答错**（`0`，手工判定）——模型 `#### 3/3` = 1，gold √3/3 ≈ 0.577：模型错误
+- 人工核对：_待填_（在 CSV 的 `human_verdict` 列填 1 或 0）

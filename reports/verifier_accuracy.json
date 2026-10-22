@@ -1,10 +1,58 @@
 {
   "scorer_version": "selfevolve-strict-verifier-1.0+math-verify-0.9.0",
-  "review_file": "reports\\verifier_review_pack.jsonl",
+  "review_file": "reports/verifier_review_pack.jsonl",
+  "human_review_file": "reports/verifier_review_pack.csv",
   "sampled": 420,
   "disputed": 110,
   "unanimous": 310,
-  "adjudication": "agent 初判（逐条判定模型最终答案是否正确），待项目负责人复核",
+  "human_review": {
+    "status": "agent-only",
+    "disputed_reviewed": 0,
+    "disputed_total": 110,
+    "coverage": 0.0,
+    "agreement_with_agent": {
+      "same": 0,
+      "differ": 0,
+      "conflicts": []
+    },
+    "unanimous_spotchecks": {
+      "n": 0,
+      "confirmed": 0,
+      "contradicted": []
+    },
+    "ignored_sample_ids": []
+  },
+  "agent_adjudication": {
+    "manual": 14,
+    "auto_rule": 96,
+    "unsettled_by_auto_rule": [],
+    "caveat": "自动规则用 strict 自己的抽取结果当参考答案，对 strict 是循环论证；只有 results_human 能作为验收标准 2 的依据"
+  },
+  "results_basis": "agent",
+  "results_agent": {
+    "verl": {
+      "reviewed": 103,
+      "right": 2,
+      "wrong": 101,
+      "accuracy_on_reviewed": 0.0194,
+      "estimated_accuracy_on_pool": 0.7429
+    },
+    "mathverify": {
+      "reviewed": 110,
+      "right": 102,
+      "wrong": 8,
+      "accuracy_on_reviewed": 0.9273,
+      "estimated_accuracy_on_pool": 0.981
+    },
+    "strict": {
+      "reviewed": 110,
+      "right": 108,
+      "wrong": 2,
+      "accuracy_on_reviewed": 0.9818,
+      "estimated_accuracy_on_pool": 0.9952
+    }
+  },
+  "results_human": null,
   "manual_overrides": {
     "Qwen2.5-1.5B-Instruct/gsm8k/test/466#0": {
       "reference_correct": true,
@@ -32,7 +80,7 @@
     },
     "EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/164#0": {
       "reference_correct": true,
-      "reason": "`#### 15` 后紧跟 `-15`：模型先声明 15（=gold）再补 -15，判为**模型正确**（strict 的'最后一行优先'在这里误判，已记入验证报告 §5 的已知限制）"
+      "reason": "`#### 15` 后紧跟 `-15`：模型先声明 15（=gold）再补 -15，判为**模型正确**（strict 的'最后一行优先'在这里误判，已记入验证报告 §6 的已知限制）"
     },
     "EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/1083#0": {
       "reference_correct": true,

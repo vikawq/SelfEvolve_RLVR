@@ -2,20 +2,34 @@
 
 对应任务：`weeks/week03_strict_verifier.md` 任务 3（三判分器对比 + 人工核对）与验收标准 2。
 
-> **人工核对状态**：本报告的"人工核对"列目前是 **agent 初判**（逐条读模型输出的结尾，判断"模型是否给出了正确的最终答案"）。
-> 核对包已生成（`reports/verifier_review_pack.md` / `.csv` / `.jsonl`，110 条），**等待项目负责人复核**。
-> 复核后只需改 `analysis/verifier_accuracy.py` 里的 `MANUAL` 表或直接改 CSV 的 `human_verdict` 列，
-> 再跑一次 `python analysis/verifier_accuracy.py` 即可刷新下面的数字。**在人工确认前，这里所有准确率都标为"初步"。**
+> **人工核对状态**：`reports/verifier_accuracy.json` 的 `human_review.status` = **`agent-only`**
+> （`disputed_reviewed` 0/110）。本报告下面所有准确率都是 **agent 初判**（逐条读模型输出的结尾，
+> 判断"模型是否给出了正确的最终答案"），**不是**人工核对结果。核对包已生成
+> （`reports/verifier_review_pack.md` / `.csv` / `.jsonl`，110 条分歧 + 310 条一致），**等待项目负责人复核**。
+>
+> 复核流程：在 `reports/verifier_review_pack.csv` 的 **`human_verdict`** 列填 `1`（模型答对）/ `0`（模型答错），
+> 理由写 `human_note` 列，然后跑 `python analysis/verifier_accuracy.py`。脚本把两种口径**分开报**：
+> `results_agent`（初判）与 `results_human`（人工），并给出 `coverage`、与初判冲突的样本清单、
+> 以及三家一致样本上的抽查结果。
+>
+> **只有 `human_review.status` 变成 `complete`（110/110 填满）才能对外说"人工核对通过"。**
+> 在那之前 `results_human` 是 `null` 或 `partial`，且**不给**全量口径估计（抽样已被人为挑选过，估不出来）。
+>
+> **为什么不能拿 agent 初判交差**：初判里 96/110 条走的是"`strict_extracted` 归一化后 == gold"
+> 这条自动规则 —— 用 strict 自己的抽取结果当参考答案，而 strict 这时判的就是 1，必然计为"判对"。
+> 这对 strict 是**循环论证**，无法独立证明它的准确率；只有 `MANUAL` 那 14 条是真的逐条手工判定。
+> 打破循环的唯一办法就是人填 `human_verdict`。实现见 `analysis/review_adjudication.py`。
 
-## 1. 结论（初步）
+## 1. 结论（初步 = agent 初判口径，`results_agent`）
 
-| 判分器 | 人工核对集（110 条分歧） | 420 抽样全体（估计） |
-|---|---|---|
-| **strict（W3 严格 verifier）** | **108/110 = 98.18%** | 99.52% |
-| mathverify（W2 口径） | 102/110 = 92.73% | 98.10% |
-| verl 内置 GSM8K 判分 | 2/103 = 1.94% | 74.29% |
+| 判分器 | 核对集（110 条分歧）<br>agent 初判 | 420 抽样全体（估计） | 人工核对<br>`results_human` |
+|---|---|---|---|
+| **strict（W3 严格 verifier）** | **108/110 = 98.18%** | 99.52% | **待填**（0/110） |
+| mathverify（W2 口径） | 102/110 = 92.73% | 98.10% | 待填 |
+| verl 内置 GSM8K 判分 | 2/103 = 1.94% | 74.29% | 待填 |
 
-- 严格 verifier 在**分歧富集**的核对集上 98.18%，**达到了验收标准（≥98%）**；全体口径 99.52%。
+- 严格 verifier 在**分歧富集**的核对集上 98.18%，**在 agent 初判口径下**达到了 ≥98%；全体口径 99.52%。
+  **验收标准 2 仍未达成** —— 它要求的是人工核对（见上面的状态块）。
 - verl 内置判分在 1.94% 是**抽样偏差**：核对集就是按"三家不一致"选的，而 verl 的分歧几乎全部是
   "模型没写 `####`、它直接判 0"。它的真实水平要看全体口径（74.3%）。
 - 两个"全体口径"都假设 310 条三家一致的样本全部判对；抽查了 10 条全错的 + 5 条全对的，**15/15 与初判一致**。
@@ -57,7 +71,14 @@ AIME 的回归结果见 §5。
 自动化部分（96/110）：strict 抽取的最终答案与 gold **归一化后字符串完全相等**，这类不需要人工判断。
 其余 14 条逐条写在 `analysis/verifier_accuracy.py::MANUAL`，每条都带理由。
 
-## 3. 分歧分类（110 条）
+## 3. 判定模式分类（420 条抽样全体）
+
+> 下表是**全体 420 条**的模式分布，不是 110 条分歧的细分：
+> 其中 `(0,1,1)`、`(None,1,0)`、`(0,1,0)`、`(1,1,0)`、`(0,0,1)`、`(None,0,1)`
+> 六行加起来 = **110 条分歧**（100+6+1+1+1+1）；`(1,1,1)` 131 / `(None,1,1)` 60 /
+> `(0,0,0)` 66 / `(None,0,0)` 53 这四行是三家一致的 310 条。
+> 另外注意：**strict 与 mathverify 在 420 条里只分歧 10 条**，剩下 100 条分歧全是 verl 漏判 ——
+> 所以这 110 条里真正有判别力的只有那 10 条，加上 `MANUAL` 里需要人判断的 14 条。
 
 | 模式 (verl, mathverify, strict) | 条数 | 含义 | 谁对（初判） |
 |---|---|---|---|
@@ -169,17 +190,21 @@ base GSM8K 会从 0.72 掉到 **0.38**——那不是模型变差，是"格式�
 
 | 产物 | 说明 |
 |---|---|
-| `reports/verifier_review_pack.md` | 人工核对包（110 条分歧，含题面/金标/输出尾部/三家判定/agent 初判） |
-| `reports/verifier_review_pack.csv` | 同上，可直接在 Excel 里核对（`-utf-8-sig`，Excel 打开不乱码） |
+| `reports/verifier_review_pack.md` | 人工核对包（110 条分歧，含题面/金标/输出尾部/三家判定/agent 初判与理由） |
+| `reports/verifier_review_pack.csv` | 420 行 × 17 列，可直接在 Excel 里核对（`utf-8-sig`，打开不乱码）。`verl`/`mathverify`/`strict` 三家判定（verl 对非 GSM8K 写 `n/a`）、`agent_verdict`/`agent_note` 初判与理由、`human_verdict`/`human_note` 留给人填 |
+| `analysis/review_adjudication.py` | 判定口径的单一实现：agent 初判、CSV 列定义、`human_verdict` 解析（两个脚本共用） |
 | `reports/verifier_review_pack.jsonl` | 含完整响应，供回查 |
 | `reports/verifier_accuracy.json` | 本报告 §1/§3 的机器可读版本 |
 | `reports/verifier_bench.json` | §4 的耗时数据 |
 
 ```bash
-# 重新生成对比 + 核对包（读 W2 的 outputs/eval）
+# 重新生成对比 + 核对包（读 W2 的 outputs/eval，需要 bigdog01 上的生成结果）
 python analysis/verifier_compare.py --n 300 --math-n 120 --seed 42 --out reports/verifier_review_pack
-# 人工核对完之后刷新准确率
-python analysis/verifier_accuracy.py --review reports/verifier_review_pack.jsonl
+# 只重建核对包的 CSV/MD（不重新打分、不需要 outputs/eval，也不需要装 math-verify）
+python analysis/verifier_compare.py --from-jsonl reports/verifier_review_pack.jsonl     --out reports/verifier_review_pack
+# 人工核对：填 reports/verifier_review_pack.csv 的 human_verdict 列，然后刷新准确率
+# （默认就会去读那个 CSV；--no-human 只看 agent 初判）
+python analysis/verifier_accuracy.py
 # 耗时
 python analysis/verifier_bench.py --n 500
 # 用严格 verifier 重打分（零 GPU）
