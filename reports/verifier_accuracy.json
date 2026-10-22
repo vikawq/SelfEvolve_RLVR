@@ -1,0 +1,89 @@
+{
+  "scorer_version": "selfevolve-strict-verifier-1.0+math-verify-0.9.0",
+  "review_file": "reports\\verifier_review_pack.jsonl",
+  "sampled": 420,
+  "disputed": 110,
+  "unanimous": 310,
+  "adjudication": "agent 初判（逐条判定模型最终答案是否正确），待项目负责人复核",
+  "manual_overrides": {
+    "Qwen2.5-1.5B-Instruct/gsm8k/test/466#0": {
+      "reference_correct": true,
+      "reason": "结尾 'Kelly paid $1.00 more'，数值 1.00 == gold 1"
+    },
+    "Qwen2.5-1.5B-Instruct/gsm8k/test/542#0": {
+      "reference_correct": true,
+      "reason": "结尾 'Change = ... = $7.00'，gold 7"
+    },
+    "Qwen2.5-1.5B-Instruct/gsm8k/test/1083#0": {
+      "reference_correct": true,
+      "reason": "结尾 'Jenny saved $2.00'，gold 2"
+    },
+    "Qwen2.5-1.5B-Instruct/gsm8k/test/23#0": {
+      "reference_correct": false,
+      "reason": "模型答 L-8（用 L 表示），gold 是数值 8：模型没有给出题目要的数值"
+    },
+    "EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/832#0": {
+      "reference_correct": true,
+      "reason": "`#### 42.00`，2.00 形式的数值等价"
+    },
+    "EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/584#0": {
+      "reference_correct": true,
+      "reason": "`#### 2.00`，数值等价"
+    },
+    "EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/164#0": {
+      "reference_correct": true,
+      "reason": "`#### 15` 后紧跟 `-15`：模型先声明 15（=gold）再补 -15，判为**模型正确**（strict 的'最后一行优先'在这里误判，已记入验证报告 §5 的已知限制）"
+    },
+    "EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/1083#0": {
+      "reference_correct": true,
+      "reason": "`#### 2.00`，数值等价"
+    },
+    "Qwen2.5-1.5B-Instruct/test/prealgebra/1436.json#0": {
+      "reference_correct": true,
+      "reason": "结尾 '56 Drinkets are equivalent to 6 Trinkets'，gold 6；句内另有一个题面数字 56，strict 因'结论句里有多个值'放弃抽取 -> no_answer（已知限制）"
+    },
+    "Qwen2.5-1.5B-Instruct/test/intermediate_algebra/894.json#0": {
+      "reference_correct": false,
+      "reason": "finish_reason=length，输出在推导中途被截断（未给出最终答案）；任务包要求截断判错"
+    },
+    "EXP-W02-01-baseline-gsm8k-global_step_116/test/intermediate_algebra/1791.json#0": {
+      "reference_correct": false,
+      "reason": "模型 `#### 8`，gold -3/8：模型错误（W2 口径因全文匹配 -3/8 而误判为对）"
+    },
+    "EXP-W02-01-baseline-gsm8k-global_step_116/test/algebra/864.json#0": {
+      "reference_correct": false,
+      "reason": "模型 `#### 6`，gold (-1,6)：模型只给了纵坐标"
+    },
+    "EXP-W02-01-baseline-gsm8k-global_step_116/test/number_theory/22.json#0": {
+      "reference_correct": false,
+      "reason": "模型 `#### 1`，gold 2：模型错误"
+    },
+    "EXP-W02-01-baseline-gsm8k-global_step_116/test/algebra/1275.json#0": {
+      "reference_correct": false,
+      "reason": "模型 `#### 3/3` = 1，gold √3/3 ≈ 0.577：模型错误"
+    }
+  },
+  "results": {
+    "verl": {
+      "reviewed": 103,
+      "right": 2,
+      "wrong": 101,
+      "accuracy_on_reviewed": 0.0194,
+      "estimated_accuracy_on_pool": 0.7429
+    },
+    "mathverify": {
+      "reviewed": 110,
+      "right": 102,
+      "wrong": 8,
+      "accuracy_on_reviewed": 0.9273,
+      "estimated_accuracy_on_pool": 0.981
+    },
+    "strict": {
+      "reviewed": 110,
+      "right": 108,
+      "wrong": 2,
+      "accuracy_on_reviewed": 0.9818,
+      "estimated_accuracy_on_pool": 0.9952
+    }
+  }
+}

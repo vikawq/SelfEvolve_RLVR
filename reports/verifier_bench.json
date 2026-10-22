@@ -1,0 +1,29 @@
+{
+  "scorer": "selfevolve-strict-verifier-1.0+math-verify-0.9.0",
+  "samples": 500,
+  "path_main": {
+    "path": "main",
+    "n": 500,
+    "mean_ms": 0.5429050920065492,
+    "p50_ms": 0.04355597775429487,
+    "p95_ms": 0.9001260623335838,
+    "p99_ms": 10.36307797767222,
+    "max_ms": 67.52323498949409
+  },
+  "path_thread": {
+    "path": "thread",
+    "n": 500,
+    "mean_ms": 1.0507640675641596,
+    "p50_ms": 0.1105250557884574,
+    "p95_ms": 1.59050605725497,
+    "p99_ms": 25.482945959083736,
+    "max_ms": 159.0554550057277
+  },
+  "projection": {
+    "samples_per_step": 320,
+    "serial_s_per_step": 0.174,
+    "parallel_s_per_step_num_workers_8": 0.022,
+    "w2_step_seconds": 162.4,
+    "share_of_step_pct": 0.013
+  }
+}
