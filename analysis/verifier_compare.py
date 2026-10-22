@@ -192,7 +192,8 @@ def load_generations(
             for idx, out in enumerate(rec["outputs"]):
                 rows.append(
                     {
-                        "sample_id": f"{rec['id']}#{idx}",
+                        # 带上 run 名：base 与 ckpt 的 sample id 会重复，人工核对时必须能区分
+                        "sample_id": f"{run_dir.name}/{rec['id']}#{idx}",
                         "dataset": dataset,
                         "run": run_dir.name,
                         "ground_truth": rec["ground_truth"],
