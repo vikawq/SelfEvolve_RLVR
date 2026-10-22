@@ -126,7 +126,7 @@ def _fail(reason: str, extracted: str | None = None, parse_ok: bool = False) -> 
 # ---------------------------------------------------------------------------
 _MV_IMPORT_ERROR: Exception | None = None
 try:  # pragma: no cover - 依赖在 CI/训练机上总是存在
-    from math_verify import ExprExtractionConfig, LatexExtractionConfig
+    from math_verify import LatexExtractionConfig
     from math_verify import parse as _mv_parse
     from math_verify import verify as _mv_verify
 
@@ -146,7 +146,6 @@ except Exception as _exc:  # pragma: no cover
     _MV_IMPORT_ERROR = _exc
     _mv_parse = None  # type: ignore[assignment]
     _mv_verify = None  # type: ignore[assignment]
-    ExprExtractionConfig = None  # type: ignore[assignment]
     LatexExtractionConfig = None  # type: ignore[assignment]
 
 
@@ -475,9 +474,9 @@ def extract_answer(response: str) -> tuple[str | None, str]:
 
     防投机：
     - 多个 `\\boxed{}` 且互不一致 → `multiple_answers`；
-    - `####` 后出现多个互不一致的合格答案 → `multiple_answers`；
-    - 答案本身是 "3 or 5" 这类多候选 → `multiple_answers`；
-    - `\\boxed{` 未闭合 / 数学环境未闭合 → `truncated`。
+    - 最终答案本身是 "3 or 5" 这类多候选 → `multiple_answers`；
+    - `\\boxed{` 未闭合 / 尾部数学环境未闭合 → `truncated`。
+    注意多个 `####` **不**判多答案（GSM8K 约定"最后一个 `####` 之后是最终答案"，理由见下方注释）。
     """
     text = "" if response is None else str(response)
     if not text.strip():
