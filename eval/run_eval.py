@@ -141,7 +141,12 @@ def _process_dataset(
         for i, (ex, gens) in enumerate(zip(examples, generations)):
             scored = []
             for gen in gens:
-                result = score(gen.text, ex.ground_truth, spec.answer_type)
+                result = score(
+                    gen.text,
+                    ex.ground_truth,
+                    spec.answer_type,
+                    finished=gen.finish_reason != "length",
+                )
                 result.update(
                     finish_reason=gen.finish_reason,
                     num_tokens=gen.num_tokens,

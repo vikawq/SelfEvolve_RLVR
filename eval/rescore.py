@@ -52,7 +52,12 @@ def rescore_dataset(run_dir: Path, name: str) -> dict:
             outputs = []
             for o in rec["outputs"]:
                 before_correct += int(o.get("correct", False))
-                result = score(o["text"], rec["ground_truth"], spec.answer_type)
+                result = score(
+                    o["text"],
+                    rec["ground_truth"],
+                    spec.answer_type,
+                    finished=o.get("finish_reason") != "length",
+                )
                 result.update(
                     finish_reason=o["finish_reason"],
                     num_tokens=o["num_tokens"],
