@@ -197,7 +197,7 @@ base GSM8K 会从 0.72 掉到 **0.38**——那不是模型变差，是"格式�
 
 | 产物 | 说明 |
 |---|---|
-| `reports/verifier_review_pack.md` | 人工核对包（110 条分歧，含题面/金标/输出尾部/三家判定/agent 初判与理由） |
+| `reports/verifier_review_pack.md` | 人工核对包（110 条分歧，含题面/金标/输出尾部/三家判定/agent 初判与理由/**已填好的人工结论**） |
 | `reports/verifier_review_pack.csv` | 420 行 × 17 列，可直接在 Excel 里核对（`utf-8-sig`，打开不乱码）。`verl`/`mathverify`/`strict` 三家判定（verl 对非 GSM8K 写 `n/a`）、`agent_verdict`/`agent_note` 初判与理由、`human_verdict`/`human_note` 留给人填 |
 | `analysis/review_adjudication.py` | 判定口径的单一实现：agent 初判、CSV 列定义、`human_verdict` 解析（两个脚本共用） |
 | `reports/verifier_review_pack.jsonl` | 含完整响应，供回查 |
