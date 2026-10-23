@@ -2550,7 +2550,7 @@ Therefore, Aiden will need **10 tablespoons** of his secret steakhouse seasoning
 ```
 
 - agent 初判：**模型答对**（`1`，自动规则）——strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）
-- 人工核对：**模型答错**（`0`，**与初判不一致**）
+- 人工核对：**模型答对**（`1`，与初判一致）——复核修正（原填 0）：题目问做 80 个肉丸需要多少调料，80÷16=5 磅、×2 tbsp=10，gold 10；模型最后一句 'Aiden will need **10 tablespoons**' 就是 10 —— 模型答对。句尾的 80 是题目给的肉丸数，mathverify 把它当成最终答案是 mathverify 抽错。
 
 ## 74. `Qwen2.5-1.5B-Instruct/gsm8k/test/130#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -2790,7 +2790,7 @@ Since the problem does not specify the original length of the candle, the final 
 ```
 
 - agent 初判：**模型答错**（`0`，手工判定）——模型答 L-8（用 L 表示），gold 是数值 8：模型没有给出题目要的数值
-- 人工核对：**模型答对**（`1`，**与初判不一致**）
+- 人工核对：**模型答错**（`0`，与初判一致）——复核修正（原填 1）：题目问蜡烛'短了多少厘米'，4 小时 ×2cm=8，gold 8；模型推理里算出了 8 cm，但随后改去回答'剩余长度'，最终 boxed 里是 L-8，不是 8 —— 模型答错。典型的'正确数字只出现在推理里、最终答案写错'，正是严格 verifier 要判错的形态。
 
 ## 81. `Qwen2.5-1.5B-Instruct/gsm8k/test/234#0`（gsm8k / Qwen2.5-1.5B-Instruct）
 
@@ -3599,7 +3599,7 @@ Therefore, 56 Drinkets are equivalent to 6 Trinkets.
 ```
 
 - agent 初判：**模型答对**（`1`，手工判定）——结尾 '56 Drinkets are equivalent to 6 Trinkets'，gold 6；句内另有一个题面数字 56，strict 因'结论句里有多个值'放弃抽取 -> no_answer（已知限制）
-- 人工核对：**模型答错**（`0`，**与初判不一致**）
+- 人工核对：**模型答对**（`1`，与初判一致）——复核修正（原填 0）：题目问 56 Drinkets 值多少 Trinkets，56 Drinkets=24 Blinkets=6 Trinkets，gold 6；模型最后一句 '56 Drinkets are equivalent to 6 Trinkets' 就是 6 —— 模型答对。strict 因'结论句里有多个值（56 与 6）'放弃抽取判 no_answer，是 strict 的已知限制（验证报告 §6 #2）。
 
 ## 105. `Qwen2.5-1.5B-Instruct/test/intermediate_algebra/894.json#0`（math500 / Qwen2.5-1.5B-Instruct）
 

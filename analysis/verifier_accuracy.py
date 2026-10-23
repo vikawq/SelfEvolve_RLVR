@@ -51,37 +51,54 @@ def _rel(path: Path | None) -> str | None:
         return str(path)
 
 
+def _count(graded: list[tuple[dict[str, Any], bool]], name: str) -> tuple[int, int]:
+    """(判对, 可比条数)：`verdicts[name] is None` 的样本（verl 对非 GSM8K）不计入分母。"""
+    right = reviewed = 0
+    for row, reference in graded:
+        verdict = row["verdicts"][name]
+        if verdict is None:
+            continue
+        reviewed += 1
+        if bool(verdict) == reference:
+            right += 1
+    return right, reviewed
+
+
 def _tally(
     graded: list[tuple[dict[str, Any], bool]],
     unanimous_right: int | None,
     total: int,
+    exact_pool: list[tuple[dict[str, Any], bool]] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """按判分器统计"判定与参考答案一致"的条数。
 
     `unanimous_right`：三家一致的样本里算作"判对"的条数；`None` 表示不给全量口径估计。
+    `exact_pool`：全部抽样样本都有参考答案时传进来，此时全量口径是**实测值**，
+    不再需要"三家一致的都算判对"这个假设。
     """
     out: dict[str, dict[str, Any]] = {}
     for name in SCORERS:
-        right = wrong = 0
-        for row, reference in graded:
-            verdict = row["verdicts"][name]
-            if verdict is None:  # verl 对非 GSM8K 不适用
-                continue
-            if bool(verdict) == reference:
-                right += 1
-            else:
-                wrong += 1
-        reviewed = right + wrong
+        right, reviewed = _count(graded, name)
         entry: dict[str, Any] = {
             "reviewed": reviewed,
             "right": right,
-            "wrong": wrong,
+            "wrong": reviewed - right,
             "accuracy_on_reviewed": round(right / reviewed, 4) if reviewed else None,
         }
-        if unanimous_right is None:
+        if exact_pool is not None:
+            pool_right, pool_n = _count(exact_pool, name)
+            entry["accuracy_on_pool"] = round(pool_right / pool_n, 4) if pool_n else None
+            entry["pool_right"] = pool_right
+            # 分母是"这个判分器适用的样本数"：verl 只适用于 GSM8K，算进 420 会虚高
+            entry["pool_n"] = pool_n
+            entry["estimated_accuracy_on_pool"] = None
+            entry["estimated_accuracy_note"] = "全部抽样已人工核对，见 accuracy_on_pool（实测，非估计）"
+        elif unanimous_right is None:
             entry["estimated_accuracy_on_pool"] = None
             entry["estimated_accuracy_note"] = "人工核对未覆盖全部分歧样本，不给全量口径估计"
         else:
+            # 估计值：假设三家一致的样本全部判对。注意对 verl 偏高——
+            # 它在 MATH 上不适用，却被这个公式算成了"判对"。实测口径见 accuracy_on_pool。
             entry["estimated_accuracy_on_pool"] = round((unanimous_right + right) / total, 4)
         out[name] = entry
     return out
@@ -94,8 +111,12 @@ def _print_block(title: str, results: dict[str, dict[str, Any]]) -> None:
             print(f"  {name:11s} 无可比样本")
             continue
         acc = f"{s['accuracy_on_reviewed']:.2%}"
-        pool = s["estimated_accuracy_on_pool"]
-        pool_txt = "全量口径 n/a" if pool is None else f"全量口径估计 {pool:.2%}"
+        if s.get("accuracy_on_pool") is not None:
+            pool_txt = f"全量实测 {s['accuracy_on_pool']:.2%} ({s['pool_right']}/{s['pool_n']})"
+        elif s["estimated_accuracy_on_pool"] is None:
+            pool_txt = "全量口径 n/a"
+        else:
+            pool_txt = f"全量口径估计 {s['estimated_accuracy_on_pool']:.2%}"
         print(f"  {name:11s} {s['right']:3d}/{s['reviewed']:3d} = {acc:>7s}   {pool_txt}")
 
 
@@ -165,6 +186,10 @@ def main(argv: list[str] | None = None) -> int:
 
     complete = bool(disputed) and disputed_ids <= set(human)
     status = "complete" if complete else ("partial" if graded_human else "agent-only")
+    # 全部抽样（分歧 + 一致）都核对过时，全量口径不必再估计，直接实测
+    full_coverage = bool(rows) and all(r["sample_id"] in human for r in rows)
+    exact_pool = [(r, human[r["sample_id"]].verdict) for r in rows] if full_coverage else None
+
     results_human = None
     if graded_human:
         results_human = _tally(
@@ -172,6 +197,7 @@ def main(argv: list[str] | None = None) -> int:
             # 全量口径只有核对完整时才给；三家一致那档扣掉抽查发现的反例
             unanimous_right=(len(unanimous) - len(spot_contradicted)) if complete else None,
             total=args.total,
+            exact_pool=exact_pool,
         )
 
     orphans = sorted(set(human) - disputed_ids - {r["sample_id"] for r in unanimous})
@@ -212,6 +238,8 @@ def main(argv: list[str] | None = None) -> int:
             "disputed_reviewed": len(graded_human),
             "disputed_total": len(disputed),
             "coverage": round(len(graded_human) / len(disputed), 4) if disputed else None,
+            "full_sample_coverage": full_coverage,
+            "sampled_reviewed": len(set(human) & {r["sample_id"] for r in rows}),
             "agreement_with_agent": {
                 "same": len(graded_human) - len(conflicts),
                 "differ": len(conflicts),

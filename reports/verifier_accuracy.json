@@ -10,36 +10,17 @@
     "disputed_reviewed": 110,
     "disputed_total": 110,
     "coverage": 1.0,
+    "full_sample_coverage": true,
+    "sampled_reviewed": 420,
     "agreement_with_agent": {
-      "same": 106,
-      "differ": 4,
+      "same": 109,
+      "differ": 1,
       "conflicts": [
-        {
-          "sample_id": "Qwen2.5-1.5B-Instruct/gsm8k/test/1221#0",
-          "agent": 1,
-          "human": 0,
-          "agent_reason": "strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）",
-          "human_note": ""
-        },
-        {
-          "sample_id": "Qwen2.5-1.5B-Instruct/gsm8k/test/23#0",
-          "agent": 0,
-          "human": 1,
-          "agent_reason": "模型答 L-8（用 L 表示），gold 是数值 8：模型没有给出题目要的数值",
-          "human_note": ""
-        },
         {
           "sample_id": "EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/164#0",
           "agent": 1,
           "human": 0,
           "agent_reason": "`#### 15` 后紧跟 `-15`：模型先声明 15（=gold）再补 -15，判为**模型正确**（strict 的'最后一行优先'在这里误判，已记入验证报告 §6 的已知限制）",
-          "human_note": ""
-        },
-        {
-          "sample_id": "Qwen2.5-1.5B-Instruct/test/prealgebra/1436.json#0",
-          "agent": 1,
-          "human": 0,
-          "agent_reason": "结尾 '56 Drinkets are equivalent to 6 Trinkets'，gold 6；句内另有一个题面数字 56，strict 因'结论句里有多个值'放弃抽取 -> no_answer（已知限制）",
           "human_note": ""
         }
       ]
@@ -87,21 +68,33 @@
       "right": 1,
       "wrong": 102,
       "accuracy_on_reviewed": 0.0097,
-      "estimated_accuracy_on_pool": 0.7405
+      "accuracy_on_pool": 0.66,
+      "pool_right": 198,
+      "pool_n": 300,
+      "estimated_accuracy_on_pool": null,
+      "estimated_accuracy_note": "全部抽样已人工核对，见 accuracy_on_pool（实测，非估计）"
     },
     "mathverify": {
       "reviewed": 110,
-      "right": 102,
-      "wrong": 8,
-      "accuracy_on_reviewed": 0.9273,
-      "estimated_accuracy_on_pool": 0.981
+      "right": 101,
+      "wrong": 9,
+      "accuracy_on_reviewed": 0.9182,
+      "accuracy_on_pool": 0.9786,
+      "pool_right": 411,
+      "pool_n": 420,
+      "estimated_accuracy_on_pool": null,
+      "estimated_accuracy_note": "全部抽样已人工核对，见 accuracy_on_pool（实测，非估计）"
     },
     "strict": {
       "reviewed": 110,
-      "right": 108,
-      "wrong": 2,
-      "accuracy_on_reviewed": 0.9818,
-      "estimated_accuracy_on_pool": 0.9952
+      "right": 109,
+      "wrong": 1,
+      "accuracy_on_reviewed": 0.9909,
+      "accuracy_on_pool": 0.9976,
+      "pool_right": 419,
+      "pool_n": 420,
+      "estimated_accuracy_on_pool": null,
+      "estimated_accuracy_note": "全部抽样已人工核对，见 accuracy_on_pool（实测，非估计）"
     }
   },
   "manual_overrides": {
@@ -168,21 +161,33 @@
       "right": 1,
       "wrong": 102,
       "accuracy_on_reviewed": 0.0097,
-      "estimated_accuracy_on_pool": 0.7405
+      "accuracy_on_pool": 0.66,
+      "pool_right": 198,
+      "pool_n": 300,
+      "estimated_accuracy_on_pool": null,
+      "estimated_accuracy_note": "全部抽样已人工核对，见 accuracy_on_pool（实测，非估计）"
     },
     "mathverify": {
       "reviewed": 110,
-      "right": 102,
-      "wrong": 8,
-      "accuracy_on_reviewed": 0.9273,
-      "estimated_accuracy_on_pool": 0.981
+      "right": 101,
+      "wrong": 9,
+      "accuracy_on_reviewed": 0.9182,
+      "accuracy_on_pool": 0.9786,
+      "pool_right": 411,
+      "pool_n": 420,
+      "estimated_accuracy_on_pool": null,
+      "estimated_accuracy_note": "全部抽样已人工核对，见 accuracy_on_pool（实测，非估计）"
     },
     "strict": {
       "reviewed": 110,
-      "right": 108,
-      "wrong": 2,
-      "accuracy_on_reviewed": 0.9818,
-      "estimated_accuracy_on_pool": 0.9952
+      "right": 109,
+      "wrong": 1,
+      "accuracy_on_reviewed": 0.9909,
+      "accuracy_on_pool": 0.9976,
+      "pool_right": 419,
+      "pool_n": 420,
+      "estimated_accuracy_on_pool": null,
+      "estimated_accuracy_note": "全部抽样已人工核对，见 accuracy_on_pool（实测，非估计）"
     }
   }
 }

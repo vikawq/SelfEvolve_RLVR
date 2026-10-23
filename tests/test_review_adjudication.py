@@ -320,8 +320,25 @@ def test_accuracy_unanimous_spotcheck_contradiction(tmp_path: Path) -> None:
     spot = got["human_review"]["unanimous_spotchecks"]
     assert spot["n"] == 1
     assert spot["contradicted"] == ["s/C"]
-    # 三家一致的 1 条被扣掉：strict 在 A/B 上都判对 -> (1-1 + 2)/3
-    assert got["results_human"]["strict"]["estimated_accuracy_on_pool"] == pytest.approx(2 / 3, abs=1e-4)
+    # 全部 3 条都核对过 -> 全量口径是实测值，不再用"三家一致都算判对"的估计
+    strict = got["results_human"]["strict"]
+    assert got["human_review"]["full_sample_coverage"] is True
+    assert strict["estimated_accuracy_on_pool"] is None
+    assert strict["accuracy_on_pool"] == pytest.approx(2 / 3, abs=1e-4)
+    assert (strict["pool_right"], strict["pool_n"]) == (2, 3)
+
+
+def test_accuracy_exact_pool_uses_per_scorer_denominator(tmp_path: Path) -> None:
+    """verl 在非 GSM8K 上不适用，不能算进它的分母 —— 旧的估计公式就是这样把它算高的。"""
+    jsonl, csv_path, _ = _fixture(tmp_path)
+    _fill(csv_path, {"s/A": "1", "s/B": "1", "s/C": "1"})
+    got = _run_accuracy(tmp_path, jsonl, csv_path)
+    assert got["human_review"]["full_sample_coverage"] is True
+    # s/B 的 verl 判定是 None（MATH 行），只剩 A/C 两条可比
+    assert got["results_human"]["verl"]["pool_n"] == 2
+    assert got["results_human"]["mathverify"]["pool_n"] == 3
+    # 估计口径会把 B 当成 verl "判对"，实测不会
+    assert got["results_human"]["verl"]["accuracy_on_pool"] == pytest.approx(0.5, abs=1e-4)
 
 
 def test_accuracy_rejects_unparseable_human_column(tmp_path: Path) -> None:
