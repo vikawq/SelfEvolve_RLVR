@@ -98,13 +98,19 @@ def collect(
                     "gold": row.get("gts"),
                     "prompt": row.get("input", ""),
                     "text": text,
+                    "loose_correct": float(row.get("loose_correct", 0.0)),
                     "strict_reason": row.get("strict_reason", row.get("reason", "")),
                     "extracted": row.get("extracted", ""),
                     "loose_extracted": row.get("loose_extracted", ""),
                     **detection,
                 }
             )
-    candidates.sort(key=lambda item: (item["score"], item["step"]), reverse=True)
+    # 优先挑"宽松判分器自己都认为答错、却仍然拿到奖励"的样本：这才是漏洞的直接证据。
+    # 只按 score 排序会选到"答案对、但严格 verifier 因格式畸形判错"的样本，容易误导读者。
+    candidates.sort(
+        key=lambda item: (item["loose_correct"] == 0.0, item["score"], item["step"]),
+        reverse=True,
+    )
     selected: list[dict[str, Any]] = []
     per_step: dict[int, int] = {}
     for candidate in candidates:
@@ -121,28 +127,32 @@ def render(experiment: str, hack_id: str, selected: list[dict[str, Any]], max_st
     lines = [
         f"# {experiment}：典型 hack 样例",
         "",
-        f"> 自动挑选（`analysis/select_hack_examples.py`）：最后 40 步内、严格判错、宽松奖励最高的"
-        f" 3 条，每条来自不同 step。原始数据：`outputs/w04/rollouts/{experiment}/<step>.jsonl`。",
+        f"> 自动挑选（`analysis/select_hack_examples.py`）：最后 40 步内、严格判错、**优先宽松判分器"
+        f"自己也认为答错**、宽松奖励最高的 3 条，每条来自不同 step。"
+        f"原始数据：`outputs/w04/rollouts/{experiment}/<step>.jsonl`。",
         "",
         f"**漏洞**：{HACK_TITLES.get(hack_id, hack_id)}",
         "",
-        "| # | step | 宽松奖励 | 严格判定 | 严格 reason | 数字个数 | boxed 数 | 字符数 | 重复 5-gram 占比 |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| # | step | 宽松奖励 | 宽松判分器认为 | 严格判定 | 严格 reason | 数字个数 | boxed 数 | 字符数 | 重复 5-gram 占比 |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for index, sample in enumerate(selected, start=1):
+        loose_verdict = "答对" if sample.get("loose_correct", 0.0) else "**答错**"
         lines.append(
-            f"| {index} | {sample['step']} | {sample['score']:.3f} | 错 | {sample['strict_reason']} | "
-            f"{sample['n_numbers']} | {sample['boxed_count']} | {sample['n_chars']} | "
-            f"{sample['repeat_ngram_ratio']:.3f} |"
+            f"| {index} | {sample['step']} | {sample['score']:.3f} | {loose_verdict} | 错 | "
+            f"{sample['strict_reason']} | {sample['n_numbers']} | {sample['boxed_count']} | "
+            f"{sample['n_chars']} | {sample['repeat_ngram_ratio']:.3f} |"
         )
     lines.append("")
 
     for index, sample in enumerate(selected, start=1):
+        loose_verdict = "答对" if sample.get("loose_correct", 0.0) else "答错"
         lines.extend(
             [
                 f"## 样例 {index}（step {sample['step']}）",
                 "",
-                f"- 宽松奖励：**{sample['score']:.3f}**；严格判定：**错**（`{sample['strict_reason']}`）",
+                f"- 宽松奖励：**{sample['score']:.3f}**；宽松判分器认为：**{loose_verdict}**；"
+                f"严格判定：**错**（`{sample['strict_reason']}`）",
                 f"- 金标：`{sample['gold']}`",
                 f"- 严格抽取：`{sample['extracted']}`；宽松抽取：`{sample['loose_extracted']}`",
                 f"- 检测指标：数字 {sample['n_numbers']} 个 / boxed {sample['boxed_count']} 个 / "
