@@ -444,3 +444,16 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
 - **结论**：W4 固定 `W04_PPO_MICRO_BS=2`、`W04_LOGPROB_MICRO_BS=2`；换 3090（24GB）后可放大并重测。
 - **注意**：由于 `use_remove_padding=False`，步时按 1024 token/序列计算，**不随平均响应长度下降**；
   L4 的"长度暴涨"主要增加 `gen` 时间，不会让 `update_actor` 成倍变慢。
+
+### 5.14 JSONL 不能用 `str.splitlines()` 切：模型输出里有 U+2028
+
+- **现象**：W4 分析训练到一半的 rollout dump 时报
+  `75.jsonl: 15/170 malformed lines`，但 `wc -l` 是 160 行；同一批数据里偶发
+  `json.decoder.JSONDecodeError: Unterminated string`。
+- **原因**：Qwen 的输出里会带 U+2028（LINE SEPARATOR）/ U+0085 等 Unicode 行分隔符，
+  `json.dumps(..., ensure_ascii=False)` 原样写出；`str.splitlines()` 把这些字符也当换行，
+  于是一条完整 JSON 被拆成两半（15 条"坏行" = 7 条被拆开的记录 + 1 条半行）。
+- **解法**：所有 JSONL 解析统一用 `text.split("\n")`，不用 `splitlines()`；分析脚本对
+  极少量半行（训练仍在写最新步）容忍并告警，坏行超过 5% 直接报错，避免静默少算样本。
+- **影响**：只影响"边训练边分析"的调试；训练数据和最终分析不受影响。
+  已同步修 `analysis/hack_metrics.py` 与 `analysis/select_hack_examples.py`。
