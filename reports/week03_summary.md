@@ -8,9 +8,9 @@
 ## 完成情况（对照验收标准逐条打勾）
 
 - [x] **`pytest -q` 全部通过，用例 ≥ 80 个**：`tests/test_math_verifier.py` **98 例** +
-      `test_strict_reward.py` **13 例** + `test_verifier_compare.py` **9 例**（对拍 installed verl）。
-      **本机：166 passed / 3 skipped**（Windows 无 `SIGALRM`、无 verl，相关用例自动 skip）；
-      **bigdog01：177 passed, 0 skipped**。
+      `test_strict_reward.py` **13 例** + `test_review_adjudication.py` **38 例** + `test_verifier_compare.py` **9 例**
+      （对拍 installed verl）。**本机：204 passed / 3 skipped**（Windows 无 `SIGALRM`、无 verl，
+      相关用例自动 skip）；**bigdog01：215 passed, 0 skipped**。
 - [x] **`verifier_validation.md` 显示严格 verifier 准确率 ≥ 98%**：**人工核对**（110 条三判分器分歧，
       2026-10-23 由项目负责人逐条填 `human_verdict`，`human_review.status = complete`）上
       **108/110 = 98.18%**；420 抽样全体口径 **99.52%**。
