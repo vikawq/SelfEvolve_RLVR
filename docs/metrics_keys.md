@@ -107,3 +107,31 @@
 - `perf/mfu/*` 仍恒为 0；不要引用。
 - 与官方 2×H100 对照、参数扫描见 `reports/profiling_baseline_4080.md`。
 
+## 10. W4 reward hacking：rollout dump 与检测指标
+
+W4 开了 `trainer.rollout_data_dir`，每个训练步落一个 `<global_step>.jsonl`（verl v0.9.1 原生功能）。
+每行字段：
+
+| 字段 | 来源 | 说明 |
+|---|---|---|
+| `input` | `batch["prompts"]` decode | 完整 chat 格式 prompt（含 `####` 指令） |
+| `output` | `batch["responses"]` decode | 模型响应全文 |
+| `gts` | `reward_model.ground_truth` | 金标 |
+| `score` | `token_level_scores.sum(-1)` | **训练用的奖励**（宽松版；对照组=严格 0/1） |
+| `step` | `global_steps` | 全局步数 |
+| 其余键 | reward dict 的额外字段 | 见下 |
+
+严格奖励（`strict_reward.py`）：`acc`（0/1）、`reason`、`extracted`、`scorer`。
+宽松奖励（`loose_L*`）：`score`、`loose_correct`、`strict_acc`、`strict_reason`、`extracted`、
+`loose_extracted`、`scorer`、`hack_id`、`n_numbers`、`boxed_count`、`first_number_pos`、`n_chars`。
+
+注意：
+
+- 训练侧拿不到 `finish_reason`，所以 `strict_acc` 是不带截断判定的严格分数（评测侧的 `correct`
+  才带 `finished` 判定）。W4 的评测指标以 `eval/run_eval.py` 的 `correct` 为准。
+- **这些键不会自动进 wandb**：训练循环只把它们塞进 `non_tensor_batch`（`ray_trainer.py` 约 1635 行），
+  不进 `metrics`。W4 用 `analysis/hack_metrics.py` 从 dump 聚合后回填同一 wandb run
+  （`hack/*`、`eval/*`），见 `docs/troubleshooting.md §5.11`。
+- 回填的指标定义在 `src/selfevolve/metrics/hack_detectors.py`：reward gap、不同数字个数、boxed 率、
+  首数字位置、长度 mean/p95、重复 5-gram 占比、截断率（需要 tokenizer）。
+
