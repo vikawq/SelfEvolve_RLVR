@@ -160,6 +160,7 @@ def analyse_eval_dir(
     *,
     step: int,
     label: str,
+    hack_id: str,
 ) -> dict[str, Any]:
     summary = json.loads((eval_dir / "summary.json").read_text(encoding="utf-8"))
     result: dict[str, Any] = {"step": step, "label": label, "eval_dir": str(eval_dir), "datasets": {}}
@@ -176,13 +177,19 @@ def analyse_eval_dir(
             data_source = "openai/gsm8k" if dataset == "gsm8k" else "math500"
             for output in row.get("outputs", []):
                 text = str(output.get("text", ""))
-                loose = float(compute_score(data_source, text, gold)["score"])
+                strict_correct = float(bool(output.get("correct", False)))
+                if hack_id == "strict":
+                    # 对照组的"宽松奖励"就是严格判定本身；用 harness 的 correct（含截断判错），
+                    # 而不是离线 verify，否则截断样本会制造一个假的正 gap。
+                    loose = strict_correct
+                else:
+                    loose = float(compute_score(data_source, text, gold)["score"])
                 records.append(
                     {
                         "text": text,
                         "loose_score": loose,
                         # 评测侧的严格判定以 eval harness 的 correct 为准（它带 finished 截断判定）
-                        "strict_score": float(bool(output.get("correct", False))),
+                        "strict_score": strict_correct,
                         "num_tokens": output.get("num_tokens"),
                         "truncated": output.get("finish_reason") == "length",
                     }
@@ -283,9 +290,15 @@ def main(argv: list[str] | None = None) -> int:
     eval_entries: list[dict[str, Any]] = []
     base_dir = Path(args.base_eval_dir)
     if base_dir.exists() and (base_dir / "summary.json").exists():
-        eval_entries.append(analyse_eval_dir(base_dir, compute_score, step=0, label="base"))
+        eval_entries.append(
+            analyse_eval_dir(base_dir, compute_score, step=0, label="base", hack_id=args.hack_id)
+        )
     for step, eval_dir in _eval_dirs(Path(args.eval_root), args.experiment):
-        eval_entries.append(analyse_eval_dir(eval_dir, compute_score, step=step, label="checkpoint"))
+        eval_entries.append(
+            analyse_eval_dir(
+                eval_dir, compute_score, step=step, label="checkpoint", hack_id=args.hack_id
+            )
+        )
     print(f"[hack_metrics] eval entries: {len(eval_entries)}")
 
     steps = [int(row["step"]) for row in training]
