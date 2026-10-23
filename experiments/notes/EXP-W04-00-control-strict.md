@@ -9,7 +9,8 @@
 - 模型 / 数据 / seed：Qwen2.5-0.5B-Instruct、GSM8K train、seed=42
 - 步数：200（save_freq=100、test_freq=0），32 prompts × rollout.n 5 = 160 seq/step，response 1024
 - micro batch：actor 2 / logprob-ref 2（4080 实测上限，见 `docs/troubleshooting.md §5.13`）
-- wandb：`runs/sxnbxucc`
+- wandb：训练 `runs/sxnbxucc`；逐步检测指标 `runs/lfmhjahf`（`EXP-W04-00-control-strict__metrics`，
+  config 里 `source_run_id=sxnbxucc`；训练循环不写 reward 额外键，见 `docs/troubleshooting.md §5.11`）
 - 训练日志：`logs/EXP-W04-00-control-strict_20261023-191834.log`；链路日志 `logs/w04_chain_control.out`
 
 ## 结果（200 步，2h27m 墙钟，exit 0）
