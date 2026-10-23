@@ -415,9 +415,12 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
 - **现象**：W4 需要把 reward gap、数字个数、boxed 率等检测指标记进 wandb；这些键在
   `_validate()` 的 `reward_extra_infos_dict` 里会被 `val-aux/...` 消费，但训练循环只做
   `batch.non_tensor_batch.update(...)`（`ray_trainer.py` 约 1635 行），没有 `metrics.update`。
-- **解法**：训练结束后 `analysis/hack_metrics.py` 从 rollout dump 聚合逐步指标，再用
-  `wandb.init(id=<run_id>, resume="allow")` 回填到同一个 run（键前缀 `hack/`、`eval/`）；
+- **解法**：训练结束后 `analysis/hack_metrics.py` 从 rollout dump 聚合逐步指标，写到**伴生
+  wandb run** `<EXP>__metrics`（键前缀 `hack/`、`eval/`，config 里 `source_run_id` 指回训练 run）；
   指标 JSON 同时落盘作为第一手证据。run id 从 `logs/<EXP>_*.log` 的 `/runs/<id>` 行解析。
+- **为什么不直接 resume 原 run**：W4 实测 `wandb.init(id=<run_id>, resume="allow")` 后回写
+  step 1..200 会被 W&B 丢弃（原 run 的 step 已到 200，step 必须单调递增），只剩最后 1–2 行；
+  summary 里的最终值能写进去，但历史曲线不完整。所以曲线放伴生 run，summary 留在原 run。
 - **影响**：不改 verl 源码、不改评测代码；回填失败只影响展示，不影响分析结论。
 
 ### 5.12 `MAX_*_LEN` / `LOGPROB_MICRO_BS` 被 `configs/hw/*.env` 的同名变量静默覆盖

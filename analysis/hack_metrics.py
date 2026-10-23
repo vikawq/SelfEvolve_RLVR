@@ -232,10 +232,26 @@ def find_wandb_run_id(experiment: str, logs_dir: Path) -> str | None:
     return None
 
 
-def backfill_wandb(metrics: dict[str, Any], *, run_id: str, project: str, entity: str | None) -> None:
+def backfill_wandb(metrics: dict[str, Any], *, run_id: str, project: str, entity: str | None) -> str:
+    """把逐步检测指标写到一个伴生 wandb run（`<EXP>__metrics`），返回 run URL。
+
+    为什么不直接 resume 原 run：原 run 的 step 已经走到 200，W&B 对同一个 run 的 step 单调递增，
+    回写 step 1..200 会被丢弃（W4 实测：只留下最后 2 行）。伴生 run 能完整保存 200 步曲线，
+    并在 config 里带 `source_run_id` 指回训练 run；summary 里的最终值在原 run 上仍可用。
+    """
     import wandb
 
-    kwargs: dict[str, Any] = {"project": project, "id": run_id, "resume": "allow", "reinit": True}
+    kwargs: dict[str, Any] = {
+        "project": project,
+        "name": f"{metrics['experiment']}__metrics",
+        "config": {
+            "source_run_id": run_id,
+            "hack_id": metrics["hack_id"],
+            "experiment": metrics["experiment"],
+        },
+        "tags": ["w04", "hack-metrics"],
+        "reinit": True,
+    }
     if entity:
         kwargs["entity"] = entity
     run = wandb.init(**kwargs)
@@ -270,7 +286,9 @@ def backfill_wandb(metrics: dict[str, Any], *, run_id: str, project: str, entity
 
     for step in sorted(by_step):
         run.log(by_step[step], step=step)
+    url = getattr(run, "url", None) or ""
     run.finish()
+    return url
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -371,13 +389,13 @@ def main(argv: list[str] | None = None) -> int:
             print("[hack_metrics] WARN no wandb run id found; skip backfill")
         else:
             try:
-                backfill_wandb(
+                url = backfill_wandb(
                     metrics,
                     run_id=run_id,
                     project=args.wandb_project,
                     entity=args.wandb_entity,
                 )
-                print(f"[hack_metrics] wandb backfilled to run {run_id}")
+                print(f"[hack_metrics] wandb metrics run for source {run_id}: {url}")
             except Exception as exc:  # pragma: no cover - 网络/权限问题不应毁掉分析
                 print(f"[hack_metrics] WARN wandb backfill failed: {type(exc).__name__}: {exc}")
     return 0
