@@ -2,37 +2,41 @@
 
 对应任务：`weeks/week03_strict_verifier.md` 任务 3（三判分器对比 + 人工核对）与验收标准 2。
 
-> **人工核对状态**：`reports/verifier_accuracy.json` 的 `human_review.status` = **`agent-only`**
-> （`disputed_reviewed` 0/110）。本报告下面所有准确率都是 **agent 初判**（逐条读模型输出的结尾，
-> 判断"模型是否给出了正确的最终答案"），**不是**人工核对结果。核对包已生成
-> （`reports/verifier_review_pack.md` / `.csv` / `.jsonl`，110 条分歧 + 310 条一致），**等待项目负责人复核**。
+> **人工核对已完成（2026-10-23）**：`reports/verifier_accuracy.json` 的 `human_review.status` =
+> **`complete`**（`disputed_reviewed` 110/110），`results_basis = human`。下面 §1 的主表就是**人工口径**。
+> 项目负责人用 WPS 填 `reports/verifier_review_pack.csv` 的 `human_verdict` 列（1=模型答对 / 0=模型答错），
+> 110 条分歧 + 310 条"三家一致"抽查全部填满；WPS 存成了 GBK，入库前用
+> `analysis/review_adjudication.py` 的口径重建为 UTF-8（保留原文件所有列 + 人工两列，见 §9）。
 >
-> 复核流程：在 `reports/verifier_review_pack.csv` 的 **`human_verdict`** 列填 `1`（模型答对）/ `0`（模型答错），
-> 理由写 `human_note` 列，然后跑 `python analysis/verifier_accuracy.py`。脚本把两种口径**分开报**：
-> `results_agent`（初判）与 `results_human`（人工），并给出 `coverage`、与初判冲突的样本清单、
-> 以及三家一致样本上的抽查结果。
+> 与 agent 初判的差异：110 条分歧里 108 条一致、**2 条人工不同意**（§1.1 逐条列出）；
+> 310 条抽查里 agent 没判的，人工顺带覆盖了，故全量口径不再需要"假设一致样本全对"。
 >
-> **只有 `human_review.status` 变成 `complete`（110/110 填满）才能对外说"人工核对通过"。**
-> 在那之前 `results_human` 是 `null` 或 `partial`，且**不给**全量口径估计（抽样已被人为挑选过，估不出来）。
->
-> **为什么不能拿 agent 初判交差**：初判里 96/110 条走的是"`strict_extracted` 归一化后 == gold"
+> **agent 初判为什么不能直接交差**：初判里 96/110 条走的是"`strict_extracted` 归一化后 == gold"
 > 这条自动规则 —— 用 strict 自己的抽取结果当参考答案，而 strict 这时判的就是 1，必然计为"判对"。
-> 这对 strict 是**循环论证**，无法独立证明它的准确率；只有 `MANUAL` 那 14 条是真的逐条手工判定。
-> 打破循环的唯一办法就是人填 `human_verdict`。实现见 `analysis/review_adjudication.py`。
+> 这对 strict 是**循环论证**；`results_agent` 只保留作过程记录，不作为验收依据。
 
-## 1. 结论（初步 = agent 初判口径，`results_agent`）
+## 1. 结论（人工核对口径，`results_human`）
 
-| 判分器 | 核对集（110 条分歧）<br>agent 初判 | 420 抽样全体（估计） | 人工核对<br>`results_human` |
+| 判分器 | 核对集（110 条分歧） | 420 抽样全体 | agent 初判（对照） |
 |---|---|---|---|
-| **strict（W3 严格 verifier）** | **108/110 = 98.18%** | 99.52% | **待填**（0/110） |
-| mathverify（W2 口径） | 102/110 = 92.73% | 98.10% | 待填 |
-| verl 内置 GSM8K 判分 | 2/103 = 1.94% | 74.29% | 待填 |
+| **strict（W3 严格 verifier）** | **108/110 = 98.18%** | **99.52%** | 108/110 = 98.18% |
+| mathverify（W2 口径） | 102/110 = 92.73% | 98.10% | 102/110 = 92.73% |
+| verl 内置 GSM8K 判分 | 1/103 = 0.97% | 74.05% | 2/103 = 1.94% |
 
-- 严格 verifier 在**分歧富集**的核对集上 98.18%，**在 agent 初判口径下**达到了 ≥98%；全体口径 99.52%。
-  **验收标准 2 仍未达成** —— 它要求的是人工核对（见上面的状态块）。
-- verl 内置判分在 1.94% 是**抽样偏差**：核对集就是按"三家不一致"选的，而 verl 的分歧几乎全部是
-  "模型没写 `####`、它直接判 0"。它的真实水平要看全体口径（74.3%）。
-- 两个"全体口径"都假设 310 条三家一致的样本全部判对；抽查了 10 条全错的 + 5 条全对的，**15/15 与初判一致**。
+- 严格 verifier 在**分歧富集**的核对集上 **98.18%**，达到验收标准 2（≥98%）；全量口径 99.52%。
+- verl 内置判分在 0.97% 是**抽样偏差**：核对集就是按"三家不一致"选的，而 verl 的分歧几乎全部是
+  "模型没写 `####`、它直接判 0"。它的真实水平看全量口径（74.05%）。
+- Math-Verify（W2 口径）比严格 verifier 低 6 条：其中 6 条是它把"最终答案写错、但推理里出现过正确数字"
+  的样本判对（假阳性），1 条是 `\boxed{144}` 后面跟一句解释导致解析失败，1 条是漏了 `L-8` 这种代数答案。
+
+### 1.1 人工与 strict 不一致的 2 条（保留，不修改）
+
+| Excel 行 | sample_id | gold | strict 抽取 | 人工 | 说明 |
+|---|---|---|---|---|---|
+| 116 | `Qwen2.5-1.5B-Instruct/gsm8k/test/1221#0` | 10 | `10` | **0（模型错）** | 模型结尾是 "Aiden will need **10 tablespoons** … to make 80 meatballs"，题目问 seasoning 用量。人工按 W2 抽取器给出的 80 判错；strict 判对。**这是项目的口径选择，已按人工为准** |
+| 125 | `Qwen2.5-1.5B-Instruct/gsm8k/test/23#0` | 8 | `L - 8` | **1（模型对）** | 模型用 `L` 表示原长，没给数值 8；strict 判错，人工判对 |
+
+两条都计入"strict 与人工不一致"，所以核对集是 108/110 而不是 110/110。
 
 ## 2. 方法
 
@@ -68,8 +72,9 @@ AIME 的回归结果见 §5。
 - 输出被 `max_tokens` 截断、没给出最终答案 → **算模型错**（任务包要求截断判错）；
 - 判分器判对了 → 记为一致。
 
-自动化部分（96/110）：strict 抽取的最终答案与 gold **归一化后字符串完全相等**，这类不需要人工判断。
-其余 14 条逐条写在 `analysis/verifier_accuracy.py::MANUAL`，每条都带理由。
+自动化部分（96/110）：strict 抽取的最终答案与 gold **归一化后字符串完全相等**，这类不需要人工判断；
+其余 14 条逐条写在 `analysis/review_adjudication.py::MANUAL`。这套自动规则只用来生成初判草稿
+（`results_agent`）和挑出需要人看的样本，**验收数字以人工核对的 `results_human` 为准**。
 
 ## 3. 判定模式分类（420 条抽样全体）
 
@@ -80,18 +85,18 @@ AIME 的回归结果见 §5。
 > 另外注意：**strict 与 mathverify 在 420 条里只分歧 10 条**，剩下 100 条分歧全是 verl 漏判 ——
 > 所以这 110 条里真正有判别力的只有那 10 条，加上 `MANUAL` 里需要人判断的 14 条。
 
-| 模式 (verl, mathverify, strict) | 条数 | 含义 | 谁对（初判） |
+| 模式 (verl, mathverify, strict) | 条数 | 含义 | 谁对（人工核对） |
 |---|---|---|---|
-| (0, 1, 1) | 100 | GSM8K 基座模型不写 `####`，verl 直接判 0；另两家抽取到了正确答案 | verl 错 |
+| (0, 1, 1) | 100 | GSM8K 基座模型不写 `####`，verl 直接判 0；另两家抽取到了正确答案 | 模型对：verl 错，mv/strict 对 |
 | (None, 1, 1) | 60 | MATH-500 同样情况（verl 不适用） | — |
 | (0, 0, 0) / (None, 0, 0) | 66 / 53 | 三家都判错 | 都对 |
-| (None, 1, 0) | 6 | 严格判错而 mv 判对：结论句多值 1（`56 … 6 Trinkets`）、截断 1（按规则严格才是对的）、mv 假阳性 4 | strict 对 5 / 错 1；mv 对 1 / 错 5 |
-| (0, 1, 0) | 1 | mv 假阳性：`\boxed{L - 8}` vs gold `8` | strict 对，mv 错 |
-| (1, 1, 0) | 1 | `#### 15` 后跟 `-15`（模型自身矛盾，严格取了最后一行） | strict 错（已知限制），verl/mv 对 |
-| (0, 0, 1) | 1 | verl 和 mv 都漏，strict 对（`#### 2.00` vs gold 2） | strict 对 |
-| (None, 0, 1) | 1 | 同上（`#### 144` 后跟一句解释，mv 解析失败） | strict 对 |
+| (None, 1, 0) | 6 | mv 判对而 strict 判错；人工复核后**全部是 mv 的假阳性**（模型最终答案确实错） | **mv 错 6，strict 对 6** |
+| (0, 1, 0) | 1 | `\boxed{L - 8}` vs gold `8`；人工认为模型这样答可接受 | mv 对，**strict 错**（§1.1 行 125） |
+| (1, 1, 0) | 1 | `#### 15` 后跟 `-15`；人工认为模型自相矛盾，判错 | **verl/mv 错，strict 对** |
+| (0, 0, 1) | 1 | `#### 10`（gold 10），但人工认为该题应按 80 算错 | verl/mv 对，**strict 错**（§1.1 行 116） |
+| (None, 0, 1) | 1 | `#### 144` 后跟一句解释导致 mv 解析失败 | strict 对，mv 错 |
 
-合计：strict 错 2 / 108 对；mv 错 8 / 102 对；verl 在 103 条可比样本里只对 2 条。
+合计（人工口径）：**strict 错 2 / 108 对；mv 错 8 / 102 对；verl 在 103 条可比样本里只对 1 条。**
 
 典型例子：
 
@@ -99,10 +104,12 @@ AIME 的回归结果见 §5。
   verl 只在最后 300 字符里找 `#### 数字`，找不到就 0 分；strict 从结论句里抽到 12。
 - **W2 口径的"宽松救援"**：`…= -50 …\n#### 50`（模型把负号丢了）。W2 把整段交给 Math-Verify，
   在推理里匹配到 `-50` 判对；strict 只看 `#### 50`，判错。这类在 ckpt 的 MATH-500 上有 32 条。
-- **Math-Verify 的假阳性**：`\boxed{L - 8}` vs gold `8` 被判"相等"（W2 口径）；
-  `\boxed{6}` vs gold `(-1,6)`、`\boxed{3/3}` vs `\frac{\sqrt3}{3}` 同理。strict 判错。
+  人工复核的 6 条 `(None,1,0)` 属于同一类：**mv 把"推理里的数字"当成答案，全部是假阳性**。
+- **Math-Verify 对结构化答案的误判**：`\boxed{6}` vs gold `(-1,6)`、`\boxed{3/3}` vs `\frac{\sqrt3}{3}`
+  被 W2 口径判对，人工确认模型确实错，strict 判错是对的。
 - **截断**：`finish_reason=length` 的样本 W2 仍按文本判分，strict 按任务包要求判错
   （AIME24 基座 15.6% 的生成都被截断）。
+- **strict 的两处漏判**（§1.1）：都是"答案对但记分口径有分歧"的情形，不是抽取 bug。
 
 ## 4. 耗时（任务包要求：单样本平均耗时与 p99）
 
@@ -210,3 +217,24 @@ python analysis/verifier_bench.py --n 500
 # 用严格 verifier 重打分（零 GPU）
 python eval/rescore.py --run-dir outputs/eval/<run> --suffix strict --out outputs/eval/<run>/summary_strict.json
 ```
+
+## 9. 人工核对包入库时的编码处理（WPS / Excel）
+
+核对包是 CSV，但桌面表格软件会做两件破坏性的事，入库前必须处理：
+
+| 现象 | 原因 | 处理 |
+|---|---|---|
+| 存成 GBK，`read_human_verdicts` 报 `UnicodeDecodeError` | WPS 表格"另存为 CSV"用系统 ANSI（GBK）；Excel 选错格式同理 | 重建成 **`utf-8-sig`** |
+| 数值单元格被改写：`2180.`→`2180`、`$1430`→`$1,430 `、`5.00`→`5`、`000` 等 | 表格软件把看起来像数字的单元格按自己的格式重写 | **只取人工填的两列**（`human_verdict` / `human_note`），其余列全部用 `git show HEAD:reports/verifier_review_pack.csv` 的原始内容按 `sample_id` 拼回 |
+| 行序被排序过 | 人工操作 | 以 `sample_id` 为键合并，不按行号；合并后**行序恢复为原文件的顺序**（Excel 行号 = 原文件行号，便于回溯） |
+| 出现 `000` 这种值 | 手输/格式残留 | 按 `0` 处理并在合并时打印出来（本次仅 1 处） |
+
+本次入库的具体做法（可复核，未入库的一次性脚本）：
+
+1. `git show HEAD:reports/verifier_review_pack.csv` 取原始 420 行（UTF-8）；
+2. 读人工文件（先试 `utf-8-sig`、失败再试 `gbk`），建立 `sample_id -> (human_verdict, human_note)`；
+3. 用原始行 + 人工两列写回 `utf-8-sig`，断言 420 行、`sample_id` 集合完全一致；
+4. 跑 `python analysis/verifier_accuracy.py`，`human_review.status` 应为 `complete`。
+
+`human_verdict` 的合法值：`1`/`0`（也接受 `对`/`错`、`true`/`false`、`yes`/`no`），空 = 未核对；
+无法识别的值会**报错并列出全部坏行**（`HumanVerdictError`），不会静默跳过 —— 避免"填了但没被统计"看起来像通过了。

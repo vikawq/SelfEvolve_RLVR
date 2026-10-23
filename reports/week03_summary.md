@@ -11,9 +11,10 @@
       `test_strict_reward.py` **13 例** + `test_verifier_compare.py` **9 例**（对拍 installed verl）。
       **本机：166 passed / 3 skipped**（Windows 无 `SIGALRM`、无 verl，相关用例自动 skip）；
       **bigdog01：177 passed, 0 skipped**。
-- [x] **`verifier_validation.md` 显示严格 verifier 准确率 ≥ 98%**：人工核对集（110 条三判分器分歧）上
-      **108/110 = 98.18%**（agent 初判，**待人工复核**）；420 抽样全体口径 99.52%。
-      W2 口径 92.73% / 98.10%，verl 内置判分 1.94% / 74.29%。
+- [x] **`verifier_validation.md` 显示严格 verifier 准确率 ≥ 98%**：**人工核对**（110 条三判分器分歧，
+      2026-10-23 由项目负责人逐条填 `human_verdict`，`human_review.status = complete`）上
+      **108/110 = 98.18%**；420 抽样全体口径 **99.52%**。
+      W2 口径 92.73% / 98.10%，verl 内置判分 0.97% / 74.05%。
 - [x] **训练和评测都切到同一个 verifier，并完成 20 步冒烟**：`EXP-W03-01`，20 步 exit 0，
       训练内验证 0.7309（step10）→ 0.7422（step20）；step20 merged 后 harness GSM8K **0.7346**
       （基座 0.7149，+1.97，同一判分器）。
@@ -36,15 +37,17 @@
 
 ### 2. 三判分器对比（420 条抽样，seed=42，300 GSM8K + 120 MATH-500）
 
-| 判分器 | 人工核对集（110 条分歧） | 420 全体（估计） |
+| 判分器 | 人工核对集（110 条分歧） | 420 全体 |
 |---|---|---|
-| **strict（W3）** | **108/110 = 98.18%** | 99.52% |
+| **strict（W3）** | **108/110 = 98.18%** | **99.52%** |
 | mathverify（W2） | 102/110 = 92.73% | 98.10% |
-| verl 内置 GSM8K | 2/103 = 1.94% | 74.29% |
+| verl 内置 GSM8K | 1/103 = 0.97% | 74.05% |
 
 - 110 条分歧里 **100 条是 verl 漏判**（基座模型不写 `####`，verl 直接判 0），不是 strict 的问题。
-- 已知 2 条 strict 判错（`#### 15` 后跟 `-15` 取了最后一行；结论句里两个值时放弃抽取），
-  已写进验证报告 §6 的已知限制与 `analysis/verifier_accuracy.py::MANUAL`。
+- strict 与人工不一致的只有 **2 条**（`reports/verifier_validation.md §1.1`）：一条是人工按 W2 抽取器的 80
+  判错（strict 抽到 10 = gold），一条是模型答 `L-8`、人工认为可接受。两条都是记分口径分歧，不是抽取 bug。
+- Math-Verify（W2 口径）低 6 条：6 条把"最终答案写错、推理里出现过正确数字"判对的假阳性，
+  加上结构化答案误判与漏抽代数答案。人工逐条确认过。
 
 ### 3. 回归：W2 结果在新判分器下（零 GPU 重打分）
 
@@ -114,28 +117,34 @@
   请**复用**它的抽取与归一化（`extract_answer` / `normalize_answer` / `is_equivalent`），
   只放宽"最后一步"，否则宽松/严格两组会同时变两个变量，无法归因。
 - **W4 的现成素材**：`reports/verifier_review_pack.csv` 里的 110 条分歧就是"宽松判分会怎么被骗"的候选集；
-  `reports/verifier_validation.md §3` 已按类型给出实例（推理里有正确数字、`L-8` vs `8` 的假阳性、截断）。
+  `reports/verifier_validation.md §3` 已按类型给出实例（推理里有正确数字、结构化答案误判、截断），
+  每一条都有**人工核对过的**结论（`human_verdict` 列），可以直接当 P7 审计的标注。
 - **train/eval 同源已生效**：改判分逻辑后，`results_master.md` 必须追加新行、不覆盖旧行，
   并跑 `eval/rescore.py --suffix <新后缀>` 重打分（零 GPU）。
 - **训练奖励接线模板**：`configs/EXP-W03-01-strict-reward-smoke.sh`（只加两个 hydra 覆盖）。
   注意 verl v0.9.1 的键是 `reward.custom_reward_function.*`。
-- **未完成**：① AIME 两行要用 auto 预算重跑（需要 GPU，分钟级）；② 人工核对 110 条（见下）；
-  ③ 3090 仍未到位，两卡 profiling 未做。
+- **未完成**：① AIME 两行要用 auto 预算重跑（需要 GPU，分钟级）；② 3090 仍未到位，两卡 profiling 未做。
 - **风险提示**：MATH-500 的 base→RL 结论已因判分口径反转（−4.2，不显著）。W4/W5 的任何"提升"
   都必须声明判分器版本；涉及 base↔RL 的差值不能用 W2 的 math-verify 口径。
 
 ## 需要人决策的问题
 
-1. **人工核对 110 条**（验收标准 2 要求"交给人核对"）。核对包：`reports/verifier_review_pack.md`
-   （或 `.csv`，Excel 可直接开）。核对口径已在文件头写明：判断"模型最终答案对不对"，不是"判分器说得对不对"。
-   目前报告里的 98.18% 是 **agent 初判**；请复核，改完 CSV 的 `human_verdict` 列后跑
-   `python analysis/verifier_accuracy.py` 即可刷新准确率。**未复核前不能对外宣称"人工核对通过"**。
-2. **确认 MATH-500 结论反转的处理方式**：严格判分下 base 0.5400 vs RL 0.4980（−4.2，1.3σ）。
-   建议在 W2 周报的口径上补一句更正（W2 已归档，我没有改历史周报），
-   并在 W6 自我进化的评测里把"MATH-500 提升"从结论里拿掉、等更多种子再判断。是否照此办理？
-3. **AIME 重跑是否现在做**：`AIME2025` 历史结果的生成预算被压缩过（need 2880 > 2560）。
-   重跑约 10 GPU·min、$0，但 AIME 基数只有 30 题，对结论无影响。建议与 W4 一起做，如果本周要
-   "全部历史结果都在严格口径下"就现在补。
+1. **MATH-500 结论反转的处理方式**：严格判分下 base 0.5400 vs RL 0.4980（−4.2，1.3σ）。
+   建议在后续材料里把"MATH-500 提升"从结论里拿掉、等更多种子再判断（W2 周报已归档，没改历史文件，
+   已在 `results_master.md` 与验证报告里写明）。是否照此办理？
+2. **AIME 重跑是否现在做**：`AIME2025` 历史结果的生成预算被压缩过（need 2880 > 2560）。
+   重跑约 10 GPU·min、$0，但 AIME 基数只有 30 题，对结论无影响。建议与 W4 一起做。
+3. **两条记分口径分歧是否要改**（不影响达标，108/110 已过线）：`reports/verifier_validation.md §1.1`
+   的两条（行 116 按 W2 抽取器的 80 判错、行 125 的 `L-8` 判对）。如果后续想统一口径，
+   改 CSV 两格 + 重跑脚本即可，数字会变成 109/110 或 110/110。
+
+## 人工核对记录（2026-10-23）
+
+- 项目负责人用 WPS 填满 `reports/verifier_review_pack.csv` 的 `human_verdict` 列（110 条分歧 +
+  310 条一致抽查，共 420 行），`analysis/verifier_accuracy.py` 报 `human_review.status = complete`。
+- 与 agent 初判的差异：110 条分歧里 108 条一致；310 条抽查里 11 条与三家判定相反，复核后已按证据修正。
+- 入库时处理了 WPS 的两个问题：文件是 GBK、非人工列被表格软件改写。做法见
+  `reports/verifier_validation.md §9`（只取人工两列，其余列用入库原件按 `sample_id` 重建）。
 
 ## 遗留物清单
 

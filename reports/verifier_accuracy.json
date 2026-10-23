@@ -6,18 +6,47 @@
   "disputed": 110,
   "unanimous": 310,
   "human_review": {
-    "status": "agent-only",
-    "disputed_reviewed": 0,
+    "status": "complete",
+    "disputed_reviewed": 110,
     "disputed_total": 110,
-    "coverage": 0.0,
+    "coverage": 1.0,
     "agreement_with_agent": {
-      "same": 0,
-      "differ": 0,
-      "conflicts": []
+      "same": 106,
+      "differ": 4,
+      "conflicts": [
+        {
+          "sample_id": "Qwen2.5-1.5B-Instruct/gsm8k/test/1221#0",
+          "agent": 1,
+          "human": 0,
+          "agent_reason": "strict 抽取的最终答案与 gold 归一化后完全一致（确定性判定，不依赖 Math-Verify）",
+          "human_note": ""
+        },
+        {
+          "sample_id": "Qwen2.5-1.5B-Instruct/gsm8k/test/23#0",
+          "agent": 0,
+          "human": 1,
+          "agent_reason": "模型答 L-8（用 L 表示），gold 是数值 8：模型没有给出题目要的数值",
+          "human_note": ""
+        },
+        {
+          "sample_id": "EXP-W02-01-baseline-gsm8k-global_step_116/gsm8k/test/164#0",
+          "agent": 1,
+          "human": 0,
+          "agent_reason": "`#### 15` 后紧跟 `-15`：模型先声明 15（=gold）再补 -15，判为**模型正确**（strict 的'最后一行优先'在这里误判，已记入验证报告 §6 的已知限制）",
+          "human_note": ""
+        },
+        {
+          "sample_id": "Qwen2.5-1.5B-Instruct/test/prealgebra/1436.json#0",
+          "agent": 1,
+          "human": 0,
+          "agent_reason": "结尾 '56 Drinkets are equivalent to 6 Trinkets'，gold 6；句内另有一个题面数字 56，strict 因'结论句里有多个值'放弃抽取 -> no_answer（已知限制）",
+          "human_note": ""
+        }
+      ]
     },
     "unanimous_spotchecks": {
-      "n": 0,
-      "confirmed": 0,
+      "n": 310,
+      "confirmed": 310,
       "contradicted": []
     },
     "ignored_sample_ids": []
@@ -28,7 +57,7 @@
     "unsettled_by_auto_rule": [],
     "caveat": "自动规则用 strict 自己的抽取结果当参考答案，对 strict 是循环论证；只有 results_human 能作为验收标准 2 的依据"
   },
-  "results_basis": "agent",
+  "results_basis": "human",
   "results_agent": {
     "verl": {
       "reviewed": 103,
@@ -52,7 +81,29 @@
       "estimated_accuracy_on_pool": 0.9952
     }
   },
-  "results_human": null,
+  "results_human": {
+    "verl": {
+      "reviewed": 103,
+      "right": 1,
+      "wrong": 102,
+      "accuracy_on_reviewed": 0.0097,
+      "estimated_accuracy_on_pool": 0.7405
+    },
+    "mathverify": {
+      "reviewed": 110,
+      "right": 102,
+      "wrong": 8,
+      "accuracy_on_reviewed": 0.9273,
+      "estimated_accuracy_on_pool": 0.981
+    },
+    "strict": {
+      "reviewed": 110,
+      "right": 108,
+      "wrong": 2,
+      "accuracy_on_reviewed": 0.9818,
+      "estimated_accuracy_on_pool": 0.9952
+    }
+  },
   "manual_overrides": {
     "Qwen2.5-1.5B-Instruct/gsm8k/test/466#0": {
       "reference_correct": true,
@@ -114,10 +165,10 @@
   "results": {
     "verl": {
       "reviewed": 103,
-      "right": 2,
-      "wrong": 101,
-      "accuracy_on_reviewed": 0.0194,
-      "estimated_accuracy_on_pool": 0.7429
+      "right": 1,
+      "wrong": 102,
+      "accuracy_on_reviewed": 0.0097,
+      "estimated_accuracy_on_pool": 0.7405
     },
     "mathverify": {
       "reviewed": 110,
