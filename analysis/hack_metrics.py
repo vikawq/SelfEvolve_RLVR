@@ -120,7 +120,20 @@ def analyse_rollouts(
 
     steps: list[dict[str, Any]] = []
     for step, path in files:
-        rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        rows: list[dict[str, Any]] = []
+        bad_lines = 0
+        for line in lines:
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                bad_lines += 1
+        # 训练还在写最新一步时，可能读到半行；只容忍极少量坏行，超过 5% 直接报错，
+        # 避免"静默少算样本"把指标带偏。最终分析在训练结束后跑，不会触发。
+        if bad_lines and bad_lines > max(2, int(0.05 * len(lines))):
+            raise ValueError(f"{path}: {bad_lines}/{len(lines)} malformed lines")
+        if bad_lines:
+            print(f"[hack_metrics] WARN {path}: skipped {bad_lines} malformed line(s)")
         texts = [str(row.get("output", "")) for row in rows]
         lengths = tokenize_lengths(tokenizer, texts) if tokenizer is not None else None
         records: list[dict[str, Any]] = []
