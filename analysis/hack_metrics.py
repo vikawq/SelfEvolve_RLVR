@@ -329,6 +329,8 @@ def main(argv: list[str] | None = None) -> int:
             "loose_mean_final": final["loose_mean"],
             "strict_mean_final": final["strict_mean"],
             "reward_gap_final20_mean": sum(gaps[-20:]) / len(gaps[-20:]),
+            "loose_mean_final20_mean": sum(float(r["loose_mean"]) for r in training[-20:])
+            / len(training[-20:]),
             "strict_mean_final20_mean": sum(float(r["strict_mean"]) for r in training[-20:])
             / len(training[-20:]),
             "hack_onset_step": onset,
