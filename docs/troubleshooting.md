@@ -460,3 +460,24 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
   极少量半行（训练仍在写最新步）容忍并告警，坏行超过 5% 直接报错，避免静默少算样本。
 - **影响**：只影响"边训练边分析"的调试；训练数据和最终分析不受影响。
   已同步修 `analysis/hack_metrics.py` 与 `analysis/select_hack_examples.py`。
+
+### 5.15 MATH-500 长响应 eval 的 sympy 缓存膨胀：RSS 114 GB、机器换页
+
+- **现象**：`EXP-W04-01` step100 的 MATH-500 评测（500 条）在**生成已经完成**后，评分到第 63 条
+  时进程 RSS 涨到 114 GB、CPU 97%、整机 `free` 归零，只能手动 `kill -9`；`math500.jsonl`
+  停在第 63 行。
+- **排查**：
+  1. 把已评的 63 条 + 第 64 条输出重放到一个**新进程**里，64 条一共 0.39 s、RSS 0.06 GB
+     → 不是某一条"病态表达式"；
+  2. 同一个 checkpoint 的前 100 条用原 `eval/run_eval.py` 重跑：2 分 27 秒完成，max RSS **15.2 GB**
+     → 内存随样本数近似线性增长（约 150 MB/条），是 `math_verify`/sympy 的全局缓存在同一进程里
+     随长 LaTeX 表达式累积；
+  3. 训练侧 160 条/步没暴露，因为训练只做 GSM8K（答案短、表达式简单）。
+- **解法**：`analysis/w04_eval_batched.py` —— 生成仍用同一个 `VLLMGenerator`/同样的采样参数，
+  评分改为 **spawn 进程池 + `maxtasksperchild=1`**：每条样本一个全新 worker，评完退出，
+  sympy 缓存随之释放。**判分函数不变**（仍调 `eval.harness.scoring.score` → 严格 verifier，
+  连 `finished` 截断判定都一样），只改计算过程的进程边界。
+- **等价性校验**：同一 checkpoint 的前 100 条 MATH-500，`run_eval.py` 与本脚本都是 **0.3100**。
+- **代价**：每条一次 Python spawn（约 0.2 s），500 条约多 1–2 分钟；换来 RSS 有界。
+- **注意**：这不是"换判分口径"，`eval/` 下的代码未被修改；报告里必须写明评测用的是
+  `analysis/w04_eval_batched.py`（判分器版本不变）。
