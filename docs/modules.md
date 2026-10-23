@@ -87,9 +87,9 @@ flowchart TB
 |---|---|---|---|---|
 | `src/selfevolve/verifier/math_verifier.py` | 严格答案判分：抽取 → 归一化 → 等价判断 → 结构化结果 | W3 | ≥80 用例（等价形式 / 对抗 / 边界） | [计划] |
 | `src/selfevolve/rewards/strict_reward.py` | 把 verifier 适配成 verl 自定义奖励 | W3 | 签名与返回值 | [计划] |
-| `src/selfevolve/rewards/loose_*.py` | L1 格式权重过高 / L2 子串匹配 / L3 取首个数字 / L4 长度奖励 | W4 | 每种 3–5 个用例，**证明漏洞按设计存在** | [计划] |
+| `src/selfevolve/rewards/loose_*.py` | L1 格式权重过高 / L2 子串匹配 / L3 取首个数字 / L4 长度奖励 | W4 | 每种 3–5 个用例，**证明漏洞按设计存在** | [已实现] |
 | `src/selfevolve/rewards/defenses.py` | D2 答案唯一性 / D3 超长惩罚 / D4 双解析器一致（D1=严格 verifier，D5=KL 系数属配置） | W5 | 每项防御的触发与不触发用例 | [计划] |
-| `src/selfevolve/metrics/hack_detectors.py` | reward gap、数字个数、boxed 个数、长度 p95、截断率、首数字位置、重复 n-gram | W4 | 逐指标用例 | [计划] |
+| `src/selfevolve/metrics/hack_detectors.py` | reward gap、数字个数、boxed 个数、长度 p95、截断率、首数字位置、重复 n-gram | W4 | 逐指标用例 | [已实现] |
 | `src/selfevolve/metrics/diversity.py` | BLEU 重复率、embedding 聚类簇熵 | W6 | 退化样本（全同题）应给出极低多样性 | [计划] |
 | `src/selfevolve/metrics/profiling.py` | 解析 `timing_s/*` / `perf/*`，出表与饼图数据 | W2 | 解析器用例 | [计划] |
 | `src/selfevolve/challenger/prompts.py` | 出题 prompt（Base 模型不遵循 chat 格式，参考 R-Zero 写法） | W6 | prompt 版本化 | [计划] |

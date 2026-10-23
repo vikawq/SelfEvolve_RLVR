@@ -397,3 +397,50 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
   3. 让训练脚本在结束时写 `.done` 标记文件，等待方轮询文件（与协议 §8 的"每个阶段写 .done"一致）。
 - **影响**：无副作用（只是每 20 s 一次 sleep，0 CPU，GPU 早已空闲），但会让"等长任务"的信号失效；
   以后后台等待一律用上面三种写法之一。
+
+### 5.10 verl v0.9.1 自带 rollout 落盘，不需要在 reward 里按 1% 抽样
+
+- **背景**：W4 任务包写的是"如果安装的 verl 版本支持 rollout 或验证生成的落盘功能，就直接用；
+  否则在自定义 reward 函数里按 1% 的比例抽样写 JSONL"。
+- **实际**：v0.9.1 有 `trainer.rollout_data_dir`（`verl/trainer/config/ppo_trainer.yaml` 第 162 行）。
+  每个训练步在 `ray_trainer.py::_log_rollout_data` 里把 decode 后的 `input` / `output` / `gts` /
+  `score` 和 reward dict 的全部额外键，经后台线程写成 `<global_step>.jsonl`，退出时 drain。
+- **结论**：W4 直接用原生落盘（全量 160 seq/step），不做 1% 抽样。数据在
+  `outputs/w04/rollouts/<EXP>/<step>.jsonl`。
+- **注意**：只有 reward dict 里返回的键会进 dump；**每条样本必须键集合一致**，否则 verl 组
+  `non_tensor_batch` 时数组长度对不上。`loose_common.build_result` 就是为此保证所有键都存在。
+
+### 5.11 训练循环不把 reward dict 的额外键写进 wandb（只有 validation 会）
+
+- **现象**：W4 需要把 reward gap、数字个数、boxed 率等检测指标记进 wandb；这些键在
+  `_validate()` 的 `reward_extra_infos_dict` 里会被 `val-aux/...` 消费，但训练循环只做
+  `batch.non_tensor_batch.update(...)`（`ray_trainer.py` 约 1635 行），没有 `metrics.update`。
+- **解法**：训练结束后 `analysis/hack_metrics.py` 从 rollout dump 聚合逐步指标，再用
+  `wandb.init(id=<run_id>, resume="allow")` 回填到同一个 run（键前缀 `hack/`、`eval/`）；
+  指标 JSON 同时落盘作为第一手证据。run id 从 `logs/<EXP>_*.log` 的 `/runs/<id>` 行解析。
+- **影响**：不改 verl 源码、不改评测代码；回填失败只影响展示，不影响分析结论。
+
+### 5.12 `MAX_*_LEN` / `LOGPROB_MICRO_BS` 被 `configs/hw/*.env` 的同名变量静默覆盖
+
+- **现象**：W4 配置里写 `MAX_RESPONSE_LEN=${MAX_RESPONSE_LEN:-1024}`，实际按 512 跑了 2 步；
+  命令行传 `LOGPROB_MICRO_BS=8`，实际生效 2。
+- **原因**：`source configs/hw/4080.env` 已经 `export` 了 W1 冒烟用的 `MAX_PROMPT_LEN=512`、
+  `MAX_RESPONSE_LEN=512`、`LOGPROB_MICRO_BS=2`。config 里的 `:-` 默认值只对"未设置"生效。
+  W2 baseline 用 `BASELINE_MAX_*` 前缀避开过同一个坑，W4 又踩了一次。
+- **解法**：实验专用变量一律带前缀（`W04_MAX_RESPONSE_LEN`；临时覆盖用 `W04_MICRO_BS` /
+  `W04_LOGPROB_MICRO_BS` 再映射到 hw env 的 `W04_*` 键）。
+- **影响**：两次 2 步空跑（各约 2 分钟，GPU 0.06 h 量级），无数据污染（走的是独立 smoke 目录）。
+
+### 5.13 Qwen2.5-0.5B + response 1024 在 4080 16GB 上的 micro batch 实测
+
+- **背景**：0.5B 参数只有 1.5B 的 1/3，直觉上可以放大 micro batch；但 response 1024 时
+  `use_remove_padding=False`，每条序列都 pad 到 1024，激活和 logits 并不小。
+- **实测**（`EXP-W04-00` 2 步冒烟）：
+  1. actor micro=4（20 seq/微批）→ `update_actor` OOM：还差 1.95 GiB，只剩 1.94 GiB；
+  2. actor micro=2、logprob/ref micro=8 → `compute_log_prob` OOM：一次要 4.99 GiB，
+     因为 logits 是 `8 × 1536 × 151936 × 2B ≈ 3.7 GiB`，再加 softmax 中间量；
+  3. **actor micro=2、logprob/ref micro=2 通过**：稳定步时 45–53 s，actor 峰值
+     9.69 GiB allocated / 12.15 GiB reserved，吞吐约 1350–1500 tok/s。
+- **结论**：W4 固定 `W04_PPO_MICRO_BS=2`、`W04_LOGPROB_MICRO_BS=2`；换 3090（24GB）后可放大并重测。
+- **注意**：由于 `use_remove_padding=False`，步时按 1024 token/序列计算，**不随平均响应长度下降**；
+  L4 的"长度暴涨"主要增加 `gen` 时间，不会让 `update_actor` 成倍变慢。
