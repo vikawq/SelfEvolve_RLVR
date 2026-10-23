@@ -226,9 +226,13 @@ def backfill_wandb(metrics: dict[str, Any], *, run_id: str, project: str, entity
     run = wandb.init(**kwargs)
     if run is None:  # pragma: no cover - wandb 返回 None 只会在异常模式下出现
         raise RuntimeError("wandb.init returned None")
+
+    # 按 step 合并：训练指标在 1..200，评测在 0/100/200。W&B 要求 step 单调递增，
+    # 所以先把同一 step 的指标合并，再按 step 排序写一次（base eval 的 step=0 必须最先写）。
+    by_step: dict[int, dict[str, float]] = {}
     for step_metrics in metrics["training"]:
-        x = int(step_metrics["step"])
-        run.log(
+        step = int(step_metrics["step"])
+        by_step.setdefault(step, {}).update(
             {
                 "hack/loose_reward": step_metrics["loose_mean"],
                 "hack/strict_acc": step_metrics["strict_mean"],
@@ -238,18 +242,19 @@ def backfill_wandb(metrics: dict[str, Any], *, run_id: str, project: str, entity
                 "hack/len_chars_mean": step_metrics["len_chars_mean"],
                 "hack/repeat_ngram_ratio": step_metrics["repeat_ngram_ratio_mean"],
                 "hack/n_samples": step_metrics["n"],
-            },
-            step=x,
+            }
         )
     for eval_entry in metrics["eval"]:
-        x = int(eval_entry["step"])
-        payload: dict[str, float] = {}
+        step = int(eval_entry["step"])
+        payload: dict[str, float] = by_step.setdefault(step, {})
         for dataset, values in eval_entry["datasets"].items():
             payload[f"eval/{dataset}_loose_reward"] = values["loose_mean"]
             payload[f"eval/{dataset}_strict_acc"] = values["strict_mean"]
             payload[f"eval/{dataset}_reward_gap"] = values["reward_gap"]
             payload[f"eval/{dataset}_truncation_rate"] = values.get("truncation_rate", 0.0)
-        run.log(payload, step=x)
+
+    for step in sorted(by_step):
+        run.log(by_step[step], step=step)
     run.finish()
 
 
