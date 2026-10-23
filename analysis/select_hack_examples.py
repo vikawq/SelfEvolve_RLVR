@@ -79,7 +79,8 @@ def collect(
     for step, path in files:
         if step not in last_steps:
             continue
-        for line in path.read_text(encoding="utf-8").splitlines():
+        # 与 hack_metrics 一致：JSONL 按 "\n" 切，避免把 U+2028 当成行分隔符。
+        for line in path.read_text(encoding="utf-8").split("\n"):
             if not line.strip():
                 continue
             row = json.loads(line)

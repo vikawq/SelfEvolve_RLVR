@@ -120,7 +120,9 @@ def analyse_rollouts(
 
     steps: list[dict[str, Any]] = []
     for step, path in files:
-        lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        # JSONL 只能用 "\n" 切：模型输出里可能含 U+2028/U+0085，str.splitlines() 会把它们
+        # 当行分隔符，导致一条完整 JSON 被拆成两半（W4 实测 step75 有 15/160 条被误判为坏行）。
+        lines = [line for line in path.read_text(encoding="utf-8").split("\n") if line.strip()]
         rows: list[dict[str, Any]] = []
         bad_lines = 0
         for line in lines:
@@ -182,7 +184,7 @@ def analyse_eval_dir(
         if not jsonl.exists():
             continue
         records: list[dict[str, Any]] = []
-        for line in jsonl.read_text(encoding="utf-8").splitlines():
+        for line in jsonl.read_text(encoding="utf-8").split("\n"):
             if not line.strip():
                 continue
             row = json.loads(line)
