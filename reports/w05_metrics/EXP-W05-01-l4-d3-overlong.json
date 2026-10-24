@@ -2,7 +2,7 @@
   "experiment": "EXP-W05-01-l4-d3-overlong",
   "hack_id": "L4",
   "hack_rule": "strict_acc=0 且 n_chars>=3000（答错且拿满长度 bonus）",
-  "generated_at": "2026-10-24T06:07:12.532431+00:00",
+  "generated_at": "2026-10-24T11:56:50.253934+00:00",
   "config": {
     "rollout_dir": "outputs/w05/rollouts/EXP-W05-01-l4-d3-overlong",
     "max_response_length": 1024,
@@ -6557,5 +6557,50 @@
       "d4_agree_rate": 0.0
     }
   ],
-  "eval": []
+  "eval": [
+    {
+      "step": 100,
+      "label": "checkpoint",
+      "datasets": {
+        "gsm8k": {
+          "score": 0.538,
+          "stderr": 0.022296008611408454,
+          "truncation_rate": 0.01,
+          "empty_answer_rate": 0.018,
+          "avg_output_tokens": 255.29,
+          "elapsed_s": 106.4360134601593
+        },
+        "math500": {
+          "score": 0.358,
+          "stderr": 0.021439962686534694,
+          "truncation_rate": 0.118,
+          "empty_answer_rate": 0.096,
+          "avg_output_tokens": 498.71,
+          "elapsed_s": 117.12968349456787
+        }
+      }
+    },
+    {
+      "step": 200,
+      "label": "checkpoint",
+      "datasets": {
+        "gsm8k": {
+          "score": 0.552,
+          "stderr": 0.02223942445298439,
+          "truncation_rate": 0.006,
+          "empty_answer_rate": 0.004,
+          "avg_output_tokens": 287.772,
+          "elapsed_s": 107.51804423332214
+        },
+        "math500": {
+          "score": 0.322,
+          "stderr": 0.020895741192884256,
+          "truncation_rate": 0.134,
+          "empty_answer_rate": 0.106,
+          "avg_output_tokens": 570.486,
+          "elapsed_s": 118.77634620666504
+        }
+      }
+    }
+  ]
 }

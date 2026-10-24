@@ -124,22 +124,26 @@ def main(argv: list[str] | None = None) -> int:
             f"{eval_cell(metrics, 200, 'gsm8k')} | {eval_cell(metrics, 200, 'math500')} |"
         )
 
-    print("\n### 表 2：防御代价（相对同 hack 未防御组的 step200 严格评测差；负 = 更差）\n")
-    print("| 实验 | 防御 | Δ GSM8K@200 | Δ MATH-500@200 | 训练侧严格 acc 差 | 长度变化 |")
-    print("|---|---|---|---|---|---|")
+    print("\n### 表 2：防御代价（vs 同 hack 未防御组 = 收益；vs 对照组 = 残余代价；负 = 更差）\n")
+    print("| 实验 | 防御 | ΔGSM vs 未防御 | ΔMATH vs 未防御 | ΔGSM vs 对照 | ΔMATH vs 对照 | strict 差 vs 对照 | 长度变化 |")
+    print("|---|---|---|---|---|---|---|---|")
     for exp, hack, defense in ROWS:
         if exp == CONTROL or exp in BASE.values():
             continue
         metrics = all_metrics.get(exp)
         base = all_metrics.get(BASE.get(hack, ""))
-        if not metrics or not base:
+        control = all_metrics.get(CONTROL)
+        if not metrics or not base or not control:
             continue
         d_gsm = (eval_score(metrics, 200, "gsm8k") or 0) - (eval_score(base, 200, "gsm8k") or 0)
         d_math = (eval_score(metrics, 200, "math500") or 0) - (eval_score(base, 200, "math500") or 0)
-        d_strict = (last20(metrics, "strict_mean") or 0) - (last20(base, "strict_mean") or 0)
+        c_gsm = (eval_score(metrics, 200, "gsm8k") or 0) - (eval_score(control, 200, "gsm8k") or 0)
+        c_math = (eval_score(metrics, 200, "math500") or 0) - (eval_score(control, 200, "math500") or 0)
+        d_strict = (last20(metrics, "strict_mean") or 0) - (last20(control, "strict_mean") or 0)
         d_len = (last20(metrics, "len_chars_mean") or 0) - (last20(base, "len_chars_mean") or 0)
         print(
-            f"| `{exp}` | {defense} | {d_gsm:+.4f} | {d_math:+.4f} | {d_strict:+.3f} | {d_len:+.0f} |"
+            f"| `{exp}` | {defense} | {d_gsm:+.4f} | {d_math:+.4f} | {c_gsm:+.4f} | {c_math:+.4f} | "
+            f"{d_strict:+.3f} | {d_len:+.0f} |"
         )
 
     print("\n### 表 3：D5 KL 扫描（L2 子串，同奖励/同数据/同 seed）\n")

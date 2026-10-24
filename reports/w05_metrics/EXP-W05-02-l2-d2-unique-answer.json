@@ -2,7 +2,7 @@
   "experiment": "EXP-W05-02-l2-d2-unique-answer",
   "hack_id": "L2",
   "hack_rule": "strict_acc=0 且 score=1.0（金标出现在推理任意位置、最终答案错）",
-  "generated_at": "2026-10-24T08:51:33.368386+00:00",
+  "generated_at": "2026-10-24T11:56:56.242921+00:00",
   "config": {
     "rollout_dir": "outputs/w05/rollouts/EXP-W05-02-l2-d2-unique-answer",
     "max_response_length": 1024,
@@ -6944,5 +6944,50 @@
       "d4_agree_rate": 0.0
     }
   ],
-  "eval": []
+  "eval": [
+    {
+      "step": 100,
+      "label": "checkpoint",
+      "datasets": {
+        "gsm8k": {
+          "score": 0.502,
+          "stderr": 0.02236050088884415,
+          "truncation_rate": 0.014,
+          "empty_answer_rate": 0.012,
+          "avg_output_tokens": 304.792,
+          "elapsed_s": 109.1545615196228
+        },
+        "math500": {
+          "score": 0.356,
+          "stderr": 0.021413266915629666,
+          "truncation_rate": 0.128,
+          "empty_answer_rate": 0.09,
+          "avg_output_tokens": 538.944,
+          "elapsed_s": 117.41924405097961
+        }
+      }
+    },
+    {
+      "step": 200,
+      "label": "checkpoint",
+      "datasets": {
+        "gsm8k": {
+          "score": 0.556,
+          "stderr": 0.022219990999098087,
+          "truncation_rate": 0.01,
+          "empty_answer_rate": 0.01,
+          "avg_output_tokens": 334.582,
+          "elapsed_s": 108.12125301361084
+        },
+        "math500": {
+          "score": 0.344,
+          "stderr": 0.02124448163641561,
+          "truncation_rate": 0.16,
+          "empty_answer_rate": 0.116,
+          "avg_output_tokens": 590.68,
+          "elapsed_s": 118.53706502914429
+        }
+      }
+    }
+  ]
 }
