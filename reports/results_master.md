@@ -64,9 +64,17 @@
 | 2026-10-24 | EXP-W05-04-l2-kl-0.05 | Qwen2.5-0.5B-Instruct + LoRA r32 @ `global_step_100`（L2 + KL=0.05 训练） | MATH-500 | 500 | temperature=0, top_p=1.0, n=1 | greedy pass@1 | **0.3240** | ±0.0209 | n/a | 17.00% | 14.60% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | [e3ea0jlw](https://forge.coreweave.com/wandb/vika-liaowq-nanjing-university/selfevolve-rlvr/runs/e3ea0jlw) |
 | 2026-10-24 | EXP-W05-04-l2-kl-0.05 | Qwen2.5-0.5B-Instruct + LoRA r32 @ `global_step_200`（L2 + KL=0.05 训练） | GSM8K test | 500 | temperature=0, top_p=1.0, n=1 | greedy pass@1 | **0.4820** | ±0.0223 | n/a | 2.60% | 3.00% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | [e3ea0jlw](https://forge.coreweave.com/wandb/vika-liaowq-nanjing-university/selfevolve-rlvr/runs/e3ea0jlw) |
 | 2026-10-24 | EXP-W05-04-l2-kl-0.05 | Qwen2.5-0.5B-Instruct + LoRA r32 @ `global_step_200`（L2 + KL=0.05 训练） | MATH-500 | 500 | temperature=0, top_p=1.0, n=1 | greedy pass@1 | **0.3320** | ±0.0211 | n/a | 19.60% | 15.60% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | [e3ea0jlw](https://forge.coreweave.com/wandb/vika-liaowq-nanjing-university/selfevolve-rlvr/runs/e3ea0jlw) |
+| 2026-10-24 | EXP-W05-05-l1-d4-dual-parser | Qwen2.5-0.5B-Instruct + LoRA r32 @ `global_step_100`（L1+D4 训练） | GSM8K test | 500 | temperature=0, top_p=1.0, n=1 | greedy pass@1 | **0.5160** | ±0.0223 | n/a | 0.40% | 0.40% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | [cjiobp4a](https://forge.coreweave.com/wandb/vika-liaowq-nanjing-university/selfevolve-rlvr/runs/cjiobp4a) |
+| 2026-10-24 | EXP-W05-05-l1-d4-dual-parser | Qwen2.5-0.5B-Instruct + LoRA r32 @ `global_step_100`（L1+D4 训练） | MATH-500 | 500 | temperature=0, top_p=1.0, n=1 | greedy pass@1 | **0.3360** | ±0.0211 | n/a | 12.80% | 12.00% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | [cjiobp4a](https://forge.coreweave.com/wandb/vika-liaowq-nanjing-university/selfevolve-rlvr/runs/cjiobp4a) |
+| 2026-10-24 | EXP-W05-05-l1-d4-dual-parser | Qwen2.5-0.5B-Instruct + LoRA r32 @ `global_step_200`（L1+D4 训练） | GSM8K test | 500 | temperature=0, top_p=1.0, n=1 | greedy pass@1 | **0.5640** | ±0.0222 | n/a | 0.40% | 0.80% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | [cjiobp4a](https://forge.coreweave.com/wandb/vika-liaowq-nanjing-university/selfevolve-rlvr/runs/cjiobp4a) |
+| 2026-10-24 | EXP-W05-05-l1-d4-dual-parser | Qwen2.5-0.5B-Instruct + LoRA r32 @ `global_step_200`（L1+D4 训练） | MATH-500 | 500 | temperature=0, top_p=1.0, n=1 | greedy pass@1 | **0.3400** | ±0.0212 | n/a | 13.20% | 11.60% | selfevolve-strict-verifier-1.0+math-verify-0.9.0 | RTX 4080 16GB | [cjiobp4a](https://forge.coreweave.com/wandb/vika-liaowq-nanjing-university/selfevolve-rlvr/runs/cjiobp4a) |
 
 ## 说明
 
+- **W5 的 20 行（2026-10-24/25）是防御组**：训练奖励是“宽松判分器 + 防御”（或只改 KL 系数），
+  评测一律用严格 verifier。D3（L4+D3）与 D2（L2+D2）把训练侧 hack rate 压到 <0.1%，
+  GSM8K step200 与对照持平（0.552 / 0.556 vs 0.556）；D4 对 L1 无效、D5（KL 0.01/0.05）反而更差。
+  完整表格与代价分析见 `reports/P7_reward_hacking_audit.md §4`。
 - **W4 的 22 行（2026-10-24）是 reward hacking 实验**：`训练奖励` 各不相同（L1 格式 / L2 子串 /
   L3 首数字 / L4 长度 / 对照组严格），但**评测一律用严格 verifier**，所以同一列可以横向比较
   "训练奖励把模型带到了哪里"。L1 的评测用 `analysis/w04_eval_batched.py`（同判分函数、

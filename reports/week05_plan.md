@@ -69,9 +69,9 @@ D2/D4 是"补救"（判分器不得不宽松时用），D1 是"根治"；报告�
 
 | 验收项 | 计划证据 | 状态 |
 |---|---|---|
-| 每种复现成功的 hack 至少一种防御把 hack rate 降到接近对照 | L4+D3、L2+D2，对照 D1（strict，hack rate 0） | 跑完判定 |
-| 审计报告完整、数字可追溯 | `reports/P7_reward_hacking_audit.md` + `reports/w05_metrics/*.json` + registry | 待做 |
-| 周报完成 | `reports/week05_summary.md` | 待做 |
+| 每种复现成功的 hack 至少一种防御把 hack rate 降到接近对照 | L4+D3、L2+D2，对照 D1（strict，hack rate 0） | **已达成**（0.496→0.00075、0.171→0.0005；L1 由 D1 覆盖，D4 无效） |
+| 审计报告完整、数字可追溯 | `reports/P7_reward_hacking_audit.md` + `reports/w05_metrics/*.json` + registry | **已完成** |
+| 周报完成 | `reports/week05_summary.md` | **已完成** |
 
 > 若某组防御做不到：照实写原因（例如 D3 阈值不合适 / 训练停滞），**不降低验收标准**，
 > 并在周报"需要人决策"里列出。
