@@ -169,8 +169,8 @@ L3 是负结果（漏洞不可利用 + 奖励过稀疏导致 collapse）。本�
   训练/评测/分析三条链路已经打通。
 - **评测必须用 `analysis/w04_eval_batched.py`（或等价进程隔离）**：同一进程连评 500 条
   MATH-500 会把 `math_verify` 的 sympy 缓存撑到 100 GB 以上；单条病态表达式还会绕过
-  5 s SIGALRM。批量评测现在有**每条 30 s 硬超时**（超时 kill + 按 timeout 判错），
-  见 `docs/troubleshooting.md §5.15`。
+  5 s SIGALRM。批量评测现在有**每条 30 s 硬超时**（超时 kill + 按 timeout 判错）。
+  缓存膨胀见 `docs/troubleshooting.md §5.15`，C 层吞掉 SIGALRM 与硬超时见 §5.16。
 - **MATH-500 已用 `--rescore-only` 对齐**：其余 4 个实验 + 基座在同一批生成文本上重评，
   9 个 checkpoint 与 harness **Δ=0.0000**；唯一 1 条 timeout 的 id 已落盘在
   `reports/w04_metrics/math500_timeout_samples.json`（`test/prealgebra/1747.json`）。

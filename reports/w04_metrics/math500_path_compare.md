@@ -47,10 +47,15 @@ batched 路径（不重新生成、不换判分函数、不换模型），逐 ch
 30 s 硬超时判错与人工判断一致。`MAX_PARSE_CHARS=2000` 拦不住这种"短但数值巨大"的表达式。
 
 说明：harness 的卡死是**累积内存**问题（评分到第 63 条后 RSS 114 GB、整机换页，无法定位到单条）；
-batched 路径在 500 条里只命中这 1 条 30 s 硬超时。两者不是同一条样本，但都属于
-`math_verify` 在长/畸形 LaTeX 上的 C 层超时失效，详见 `docs/troubleshooting.md §5.15`。
+batched 路径在 500 条里只命中这 1 条 30 s 硬超时。两者既不是同一条样本，也不是同一个失效机制：
+累积内存见 `docs/troubleshooting.md §5.15`，单条表达式在 C 层吞掉 SIGALRM 见 §5.16。两者的共同
+根源都是 `math_verify` 在长/畸形 LaTeX 上的行为。
 
-完整记录（含 sha256 与每个 run 的 `scoring_errors`）：`reports/w04_metrics/math500_timeout_samples.json`。
+完整记录（含 sha256、题面与模型原始响应）：`reports/w04_metrics/math500_timeout_samples.json`（顶层 `generated_at` / `rule` / `count` / `samples`）。
+每个 run 的 `scoring_errors` 在各自的 summary 里：9 个 rescore-only run 的 summary 入库在
+`reports/w04_metrics/eval_batched_math500/*.summary.json`（**全为 `{}`**）；L1 两个 batched run 的
+summary 在 bigdog01 的 `outputs/eval/<run>/summary.json`（不入 git），其中 step100 计入上面这 1 条
+timeout、step200 为 0。
 
 ## 产物
 
