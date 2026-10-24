@@ -526,3 +526,35 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
   正确的判分是"错"（gold 是 1），30 s 硬超时判错与人工判断一致。
   W5 若要加固 verifier，应在送进 sympy 前加"指数塔 / 指数上限"的前置检查，
   而不是只靠字符数上限。
+
+### 5.17 W5 D3：硬上限判 0 与 DAPO 原文的差异；reward 进程内的 tokenizer
+
+- **任务文档 vs DAPO**：任务包写"超过硬上限直接判 0"；DAPO 原文（arXiv 2503.14476 §3.3）
+  的 overlong shaping 是 `R = R_correct − 1`（硬上限时奖励可以是 −1）。本周按任务文档实现：
+  `score = max(0, 严格正确 − penalty)`，`len>=hard` 时整条判 0。差异与理由记入
+  `reports/P7_reward_hacking_audit.md §4.1`。
+- **为什么不用字符数**：`max_response_length=1024` 是 token，字符/ token 比在 W4 五个实验里
+  从 1.76（L3 collapse）到 3.93（L4 长回答）不等，用固定字符阈值会在不同实验间漂移。
+  `defense_common.count_tokens` 懒加载 `W05_TOKENIZER_PATH` 指向的 tokenizer。
+- **回退路径**：tokenizer 缺失/加载失败时用 `ceil(chars / 3.5)`，并在每条 rollout 上打
+  `tokenizer_fallback=1`；分析脚本会报 `tokenizer_fallback_rate`，不允许静默回退。
+- **实测（EXP-W05-01 冒烟，2 步）**：160/160 条 `tokenizer_fallback=0`；`d3_tokens` 均值 ~150、
+  最大 876，只有 1 条触发 linear penalty（0.422），tokenizer 加载没有拖慢训练（46–51 s/step，
+  与 W4 对照 44 s/step 同量级）。
+- **环境变量必须 export 在 `python -m verl.trainer.main_ppo` 之前**：reward 模块在 driver 进程
+  里被 import；Ray worker 继承 driver 的环境。配置写在 `configs/EXP-W05-*.sh`，不要在 Python 里
+  临时 `os.environ[...] =` 之后再 spawn。
+
+### 5.18 W5 D2/D4：补丁式防御的"解析状态"代价（离线回放实测）
+
+- **做法**：`analysis/w05_replay_defenses.py` 把 W4 最后 20 步的 3200 条 rollout 文本重新过一遍
+  防御判分器（不重新生成、不重新训练），先估效果再烧 GPU。
+- **D2（L2）**：3200 条里 `ok=2861`（89.4%）、`none=315`（9.8%）、`multiple=24`（0.75%）。
+  513 条 base hack 全部被判 0（`base_hack_defended_ok=513`），没有新增 hack；但防御后的
+  loose mean 0.535 已经**低于**严格准确率 0.590——D2 把"没有唯一最终答案"的正确样本也判 0 了。
+  这就是补丁式防御的代价：hack rate 归零，但奖励变稀疏且偏严，训练信号会减少。
+- **D4（L1）**：3200 条里 A/B 解析一致率 99.1%，`none=6`、`multiple=10`；reward gap 从
+  0.173 只降到 0.172、hack rate 0.358 不变。原因：L1 的漏洞是"写 boxed 就给 0.5"这个**规格**，
+  解析层一致并不能撤销格式分。结论：D4 只能治解析漏洞，不能治规格漏洞。
+- **工程含义**：报告里的"hack rate 降低"必须和"奖励均值/严格准确率/长度"一起看；只看 hack rate
+  会把"奖励被打成 0"误当成"防御成功"。

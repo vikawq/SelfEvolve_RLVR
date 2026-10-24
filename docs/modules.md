@@ -85,11 +85,12 @@ flowchart TB
 
 | 路径 | 职责 | 交付周 | 单测要求 | 状态 |
 |---|---|---|---|---|
-| `src/selfevolve/verifier/math_verifier.py` | 严格答案判分：抽取 → 归一化 → 等价判断 → 结构化结果 | W3 | ≥80 用例（等价形式 / 对抗 / 边界） | [计划] |
-| `src/selfevolve/rewards/strict_reward.py` | 把 verifier 适配成 verl 自定义奖励 | W3 | 签名与返回值 | [计划] |
+| `src/selfevolve/verifier/math_verifier.py` | 严格答案判分：抽取 → 归一化 → 等价判断 → 结构化结果 | W3 | ≥80 用例（等价形式 / 对抗 / 边界） | [已实现] |
+| `src/selfevolve/rewards/strict_reward.py` | 把 verifier 适配成 verl 自定义奖励 | W3 | 签名与返回值 | [已实现] |
 | `src/selfevolve/rewards/loose_*.py` | L1 格式权重过高 / L2 子串匹配 / L3 取首个数字 / L4 长度奖励 | W4 | 每种 3–5 个用例，**证明漏洞按设计存在** | [已实现] |
-| `src/selfevolve/rewards/defenses.py` | D2 答案唯一性 / D3 超长惩罚 / D4 双解析器一致（D1=严格 verifier，D5=KL 系数属配置） | W5 | 每项防御的触发与不触发用例 | [计划] |
+| `src/selfevolve/rewards/defense_common.py` + `defended_reward.py` | D2 答案唯一性 / D3 超长惩罚 / D4 双解析器一致（D1=严格 verifier，D5=KL 系数属配置）；单一入口 + 环境变量开关 | W5 | 每项防御的触发与不触发用例 | [已实现] |
 | `src/selfevolve/metrics/hack_detectors.py` | reward gap、数字个数、boxed 个数、长度 p95、截断率、首数字位置、重复 n-gram | W4 | 逐指标用例 | [已实现] |
+| `src/selfevolve/metrics/hack_rate.py` | 逐 hack 的投机判定规则（L1/L2/L3/L4/strict），报告与分析的唯一口径 | W5 | 每条规则的正反例 | [已实现] |
 | `src/selfevolve/metrics/diversity.py` | BLEU 重复率、embedding 聚类簇熵 | W6 | 退化样本（全同题）应给出极低多样性 | [计划] |
 | `src/selfevolve/metrics/profiling.py` | 解析 `timing_s/*` / `perf/*`，出表与饼图数据 | W2 | 解析器用例 | [计划] |
 | `src/selfevolve/challenger/prompts.py` | 出题 prompt（Base 模型不遵循 chat 格式，参考 R-Zero 写法） | W6 | prompt 版本化 | [计划] |
@@ -100,6 +101,7 @@ flowchart TB
 | `eval/run_eval.py` | 独立评测：vLLM 离线推理 → 逐样本 JSONL + 汇总 JSON | W2 | 小样本端到端 | [计划] |
 | `eval/datasets.md` | 数据集与指标口径登记（名称、题数、采样参数） | W2 | — | [计划] |
 | `analysis/parse_profile.py` / `plot_hacking.py` / `dashboard.py` | profiling 表与饼图 / hacking 双曲线图 / 迭代面板 | W2 / W4 / W8 | — | [计划] |
+| `analysis/w05_metrics.py` / `w05_summary.py` / `plot_defenses.py` | 防御组逐步指标（gap + hack rate + 零方差组）/ 报告表格 / 防御曲线 | W5 | — | [已实现] |
 | `scripts/run_exp.sh` | 统一实验入口：落日志、透传退出码、设 `RAY_TMPDIR` 等 | W1 | — | [已实现] |
 | `scripts/prepare_data.sh` | GSM8K 预处理 + 模型下载，`.done` 可重入 | W1 | — | [已实现] |
 | `scripts/run_iteration.sh` | 自我进化 7 阶段编排，阶段级 `.done` | W7 | — | [计划] |
@@ -199,9 +201,10 @@ def propose_next_config(monitor: dict, history: list[dict]) -> tuple[dict, str]:
 | 测试文件 | 覆盖 | 周 | 状态 |
 |---|---|---|---|
 | `tests/test_skeleton.py` | 目录骨架、子包导入、硬件档位变量名一致、registry 表头 | W1 | [已实现] 19 passed |
-| `tests/test_math_verifier.py` | ≥80 用例：等价形式 / 对抗样本 / 边界 | W3 | [计划] |
-| `tests/test_loose_rewards.py` | L1–L4 的漏洞「按设计存在」 | W4 | [计划] |
-| `tests/test_defenses.py` | D2–D4 的触发与误伤 | W5 | [计划] |
+| `tests/test_math_verifier.py` | ≥80 用例：等价形式 / 对抗样本 / 边界 | W3 | [已实现] |
+| `tests/test_loose_rewards.py` | L1–L4 的漏洞「按设计存在」 | W4 | [已实现] |
+| `tests/test_defenses.py` | D2–D4 的触发与误伤、D3 边界、防御后键集合 | W5 | [已实现] |
+| `tests/test_hack_rate.py` | 逐 hack 规则的正反例与聚合 | W5 | [已实现] |
 | `tests/test_pseudo_label.py` | 等价答案合并计票、p̂ 计算、空样本 | W6 | [计划] |
 | `tests/test_challenger_parse.py` | 非法题识别（偷带答案、截断、超长） | W6 | [计划] |
 | `tests/test_build_dataset.py` | 难度带边界、去重、parquet schema | W6 | [计划] |

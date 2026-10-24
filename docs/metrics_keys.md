@@ -135,3 +135,27 @@ W4 开了 `trainer.rollout_data_dir`，每个训练步落一个 `<global_step>.j
 - 回填的指标定义在 `src/selfevolve/metrics/hack_detectors.py`：reward gap、不同数字个数、boxed 率、
   首数字位置、长度 mean/p95、重复 5-gram 占比、截断率（需要 tokenizer）。
 
+## 11. W5 防御组：额外的 reward dict 字段与 hack rate
+
+`defended_reward.py` 在 W4 的字段之上追加（每条 rollout 都有，缺失即视为 bug）：
+
+| 字段 | 含义 |
+|---|---|
+| `defense` | 生效的防御组合，如 `D3` / `D2` / `D4` / `none` |
+| `base_hack` | 底层宽松判分器：`L1` / `L2` / `L3` / `L4` |
+| `defended_correct` | 防御组的严格判定（与 `strict_acc` 同值，保留成显式字段便于读日志） |
+| `d2_status` | D2 的独立解析状态：`ok` / `multiple` / `none` / `truncated` |
+| `d3_tokens` | D3 用的 token 数（tokenizer 计；回退时是字符估算） |
+| `d3_penalty` | D3 的线性惩罚值 ∈ [0, 1] |
+| `d3_state` | `none` / `linear` / `hard_cap` |
+| `tokenizer_fallback` | 1 = D3 没用到真 tokenizer（字符回退），0 = 正常 |
+| `d4_agree` / `d4_status` | D4 的两个解析器是否一致 / 独立解析器状态 |
+| `d4_parser_a` / `d4_parser_b` | 两个解析器各自抽到的答案（截断到 120 字符） |
+
+W5 的分析口径（`analysis/w05_metrics.py`）：
+
+- `hack_rate`：最后 50 步全部 rollout 中满足 `metrics/hack_rate.py` 规则的比例；
+- `zero_variance_group_rate`：同一 prompt 的 5 条 rollout 奖励完全相同的比例（GRPO 无梯度信号）；
+- `d3_states` / `d2_status_counts` / `d4_agree_rate`：防御触发率与解析状态分布；
+- `len_tokens_mean` / `truncation_rate`：与 W4 同口径，需要 tokenizer。
+
