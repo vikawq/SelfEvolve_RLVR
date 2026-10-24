@@ -93,6 +93,11 @@ W5 的任务是把这个现象从“能复现”推进到“能防御、能量�
 > | L4 | `strict_acc=0` 且 `n_chars≥3000`（答错且拿满长度 bonus） |
 > | D1/strict | 恒为 0（没有代理奖励差） |
 
+> **与任务文档的命名差异**：任务文档写"被 `hack_detectors` 判定为投机"；实现上我们把**判定规则**
+> 放在 `src/selfevolve/metrics/hack_rate.py`，`hack_detectors` 只保留"度量现象"的通用指标
+> （gap、boxed 率、长度、重复率）。原因是判定规则依赖具体 hack 类型，而现象度量不应该知道
+> hack 类型（`docs/modules.md §2.5` 的分层）。两者都有单测。
+
 ## 3. Hacking 分类与复现结果（W4，未防御）
 
 ### 3.1 总表

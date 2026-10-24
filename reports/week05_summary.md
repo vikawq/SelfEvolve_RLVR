@@ -76,6 +76,9 @@ D1（严格 verifier）作为全漏洞的根治防御，数值上等于 `EXP-W04
    `eval/` 目录本周**一行未改**。
 5. **冒烟后的清理**：`EXP-W05-01` 的 2 步冒烟产生了 `global_step_2` checkpoint；正式跑之前删掉了
    该 checkpoint 与冒烟 rollout，保证正式训练从 step 0 开始、步数与其他实验一致。
+6. **hack rate 的实现位置**：任务文档写"被 `hack_detectors` 判定"；实现上判定规则在
+   `metrics/hack_rate.py`，`hack_detectors` 只做现象度量（分层原因见 `docs/modules.md §2.5`）。
+   规则在开跑前写死并有单测，报告 §2.3 逐条列出。
 
 ## 4. 失败与问题（附错误信息与已尝试的方法）
 
