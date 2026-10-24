@@ -474,10 +474,41 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
      随长 LaTeX 表达式累积；
   3. 训练侧 160 条/步没暴露，因为训练只做 GSM8K（答案短、表达式简单）。
 - **解法**：`analysis/w04_eval_batched.py` —— 生成仍用同一个 `VLLMGenerator`/同样的采样参数，
-  评分改为 **spawn 进程池 + `maxtasksperchild=1`**：每条样本一个全新 worker，评完退出，
+  评分改为 **spawn 进程池 + `maxtasksperchild=1`**（最终实现是「每条样本一个 spawn 进程 +
+  30 s 硬超时」，见 §5.16）：每条样本一个全新 worker，评完退出，
   sympy 缓存随之释放。**判分函数不变**（仍调 `eval.harness.scoring.score` → 严格 verifier，
   连 `finished` 截断判定都一样），只改计算过程的进程边界。
 - **等价性校验**：同一 checkpoint 的前 100 条 MATH-500，`run_eval.py` 与本脚本都是 **0.3100**。
 - **代价**：每条一次 Python spawn（约 0.2 s），500 条约多 1–2 分钟；换来 RSS 有界。
 - **注意**：这不是"换判分口径"，`eval/` 下的代码未被修改；报告里必须写明评测用的是
   `analysis/w04_eval_batched.py`（判分器版本不变）。
+
+### 5.16 单条病态表达式在 C 层吞掉 SIGALRM：批量评测加每条 30 s 硬超时
+
+- **前提**：§5.15 的进程池方案（`maxtasksperchild=1`）解决了"缓存跨样本累积"，但**没有解决
+  单条样本自己跑不完**。本节是 `analysis/w04_eval_batched.py` 的最终实现，§5.15 的"进程池"
+  描述以本节为准。
+- **现象**：L1 step100 的 MATH-500 批量评测仍然卡住——一个 worker 99% CPU、RSS 15 GB、
+  2 分钟以上不返回（实测可达 18+ 分钟）；其余 worker 空转，整批评测无法结束。
+- **原因**：严格 verifier 的 5 s 超时在 POSIX 主线程走 `signal.setitimer`（`math_verifier.py`
+  的 `_run_with_timeout`），而 SIGALRM 是 **Python 层**信号——sympy/gmp 在 C 里做大整数与符号
+  运算时解释器根本不检查信号标志，于是 5 s 超时**不会触发**，`parse`/`verify` 一直跑下去。
+  同理，`STRICT_VERIFIER_TIMEOUT_MODE=pool` 也救不了：`_reset_pool()` 用的是
+  `shutdown(wait=False)`，**不会杀掉已经在跑的 worker**，那条样本会继续占满一个核直到自己跑完。
+- **解法**：能打断 C 层循环的只有进程级 kill。`w04_eval_batched.py` 改成**一条样本一个 spawn
+  `Process` + 管道回传**（`analysis/w04_score_worker.py:score_task_into`），父进程
+  `Pipe.poll(timeout_s)` 等结果，默认 `--score-timeout-s 30`：超时依次 `terminate()` → `kill()`，
+  并按**严格 verifier 的 timeout 语义**返回（`correct=False`、`reason="timeout"`、
+  `error="timeout"`，即判错且计入 `summary.json` 的 `scoring_errors`）。
+- **判分语义为什么没变**：spawn 出来的子进程自己就是 POSIX 主进程主线程，所以每条判定**内部
+  那 5 s SIGALRM 仍然生效**；30 s 只是"SIGALRM 被 C 层吞掉"时的外层兜底。凡 `run_eval.py` 能
+  正常判完的样本两者必然同分（前 100 条 MATH-500 双跑都是 0.3100，见 §5.15）；两者唯一会分歧的
+  场景是 `run_eval.py` 会**永久挂死**的病态样本——那里本脚本判错，而 `run_eval.py` 给不出分数。
+- **实测影响**：L1 step100 的 MATH-500 有 **1 条**超时（step200 为 0）。按判错计，对 L1 的
+  MATH-500 分数影响 ≤0.2 分，而该数据集的 stderr 是 2.05 分；方向上是**压低 L1 自己**
+  （被 hack 的那组），不会把结论往有利方向推。
+- **为什么不去修 verifier**：(1) SIGALRM 技术上打断不了 C 层循环，进程级 kill 是唯一正确修法；
+  (2) `math_verifier.py` 是训练奖励与评测**共用**的代码，改它要动
+  `selfevolve-strict-verifier-1.0` 这个 pin，而 `reports/results_master.md` 里 W1–W4 所有行都靠
+  这个版本串横向比较，等于全表重评。若要加固 verifier 本身，应在 W5 作为独立变更做、版本升到
+  1.1，并附 rescore 等价性对照表。
