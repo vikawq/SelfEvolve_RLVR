@@ -176,9 +176,12 @@ def analyse_eval_dir(
     step: int,
     label: str,
     hack_id: str,
+    skip_loose: bool = False,
 ) -> dict[str, Any]:
     summary = json.loads((eval_dir / "summary.json").read_text(encoding="utf-8"))
     result: dict[str, Any] = {"step": step, "label": label, "eval_dir": str(eval_dir), "datasets": {}}
+    if skip_loose:
+        result["loose_source"] = "strict_fallback"
     for dataset in ("gsm8k", "math500"):
         jsonl = eval_dir / f"{dataset}.jsonl"
         if not jsonl.exists():
@@ -193,9 +196,10 @@ def analyse_eval_dir(
             for output in row.get("outputs", []):
                 text = str(output.get("text", ""))
                 strict_correct = float(bool(output.get("correct", False)))
-                if hack_id == "strict":
-                    # 对照组的"宽松奖励"就是严格判定本身；用 harness 的 correct（含截断判错），
-                    # 而不是离线 verify，否则截断样本会制造一个假的正 gap。
+                if hack_id == "strict" or skip_loose:
+                    # 对照组的"宽松奖励"就是严格判定本身；L1 的 MATH-500 长 LaTeX 答案会让
+                    # 离线复算（math_verify）卡死/OOM，所以 L1 评测侧的 gap 不计算，标
+                    # loose_source=strict_fallback。训练侧的 gap 不受影响。
                     loose = strict_correct
                 else:
                     loose = float(compute_score(data_source, text, gold)["score"])
@@ -307,6 +311,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--wandb-project", default="selfevolve-rlvr")
     parser.add_argument("--wandb-entity", default=None)
     parser.add_argument("--no-wandb", action="store_true")
+    parser.add_argument(
+        "--skip-eval-loose",
+        action="store_true",
+        help="评测侧不重算宽松奖励（用严格判定代替）；L1 的 MATH-500 长 LaTeX 会让 math_verify 卡死时用",
+    )
     args = parser.parse_args(argv)
 
     rollout_dir = Path(args.rollout_dir)
@@ -329,12 +338,24 @@ def main(argv: list[str] | None = None) -> int:
     base_dir = Path(args.base_eval_dir)
     if base_dir.exists() and (base_dir / "summary.json").exists():
         eval_entries.append(
-            analyse_eval_dir(base_dir, compute_score, step=0, label="base", hack_id=args.hack_id)
+            analyse_eval_dir(
+                base_dir,
+                compute_score,
+                step=0,
+                label="base",
+                hack_id=args.hack_id,
+                skip_loose=args.skip_eval_loose,
+            )
         )
     for step, eval_dir in _eval_dirs(Path(args.eval_root), args.experiment):
         eval_entries.append(
             analyse_eval_dir(
-                eval_dir, compute_score, step=step, label="checkpoint", hack_id=args.hack_id
+                eval_dir,
+                compute_score,
+                step=step,
+                label="checkpoint",
+                hack_id=args.hack_id,
+                skip_loose=args.skip_eval_loose,
             )
         )
     print(f"[hack_metrics] eval entries: {len(eval_entries)}")
