@@ -8,7 +8,7 @@
 - 实现：`src/selfevolve/rewards/loose_L3_first_number.py`
 - 模型 / 数据 / seed：Qwen2.5-0.5B-Instruct、GSM8K train、seed=42
 - 步数：200，32 prompts × n5 = 160 seq/step，response 1024，actor micro=2 / logprob micro=2
-- wandb：训练 `runs/mingymc1`；逐步检测指标 `runs/<待补>`
+- wandb：训练 `runs/mingymc1`；逐步检测指标 `runs/1lxz31hr`
 - 训练日志：`logs/EXP-W04-03-l3-first-number_*.log`；链路 `logs/w04_chain_train_rest.out`
 
 ## 结果（负结果 + 训练崩溃）
@@ -47,3 +47,7 @@
 
 step100/200 用 `eval/run_eval.py`（标准 harness，严格 verifier）。L3 的输出很短（无长 LaTeX），
 MATH-500 评测 36 s/checkpoint，未触发 sympy 缓存问题。
+
+`reports/hack_examples/EXP-W04-03-l3-first-number.md` 里的 3 条不是"成功的 hack"，而是
+退化后的 `#### <猜测>` 输出：第一个数字恰好等于金标时 L3 给 1.0，但模型已经没有推理过程；
+保留它是为了证明 collapse 的形态。

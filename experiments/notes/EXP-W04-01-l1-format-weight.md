@@ -8,7 +8,7 @@
 - 实现：`src/selfevolve/rewards/loose_L1_format.py`
 - 模型 / 数据 / seed：Qwen2.5-0.5B-Instruct、GSM8K train、seed=42
 - 步数：200，32 prompts × n5 = 160 seq/step，response 1024，actor micro=2 / logprob micro=2
-- wandb：训练 `runs/7kfhv9ng`；逐步检测指标 `runs/<待补>`
+- wandb：训练 `runs/7kfhv9ng`；逐步检测指标 `runs/0ug4axwh`
 - 训练日志：`logs/EXP-W04-01-l1-format-weight_*.log`；链路 `logs/w04_chain_rest.out`
 
 ## 训练结果（200 步，exit 0）
@@ -41,9 +41,19 @@
    但这条在 200 步、0.5B 上不足以把严格准确率拉下来。
 5. 因此 L1 的定性是：**specification gaming（代理奖励被满足）成立，capability degradation 不成立**。
 
-## 评测（待补）
+## 评测
 
-step100/200 用 `analysis/w04_eval_batched.py`（与 `eval/run_eval.py` 同判分器，进程隔离防
-sympy 缓存膨胀，见 `docs/troubleshooting.md §5.15`）评 GSM8K test 前 500 + MATH-500。
-step100 的 harness 部分结果：GSM8K **0.5180**（500 题，±0.0223）；MATH-500 的完整 500 题
-评测在提交后被 `analysis/w04_eval_batched.py` 重跑，结果见本表更新。
+step100/200 用 `analysis/w04_eval_batched.py`（与 `eval/run_eval.py` **同一个**判分函数；
+每条样本一个 spawn 进程 + 30 s 硬超时，见 `docs/troubleshooting.md §5.15`）。
+
+| 数据集 | step100 | step200 | 对照 step200 |
+|---|---|---|---|
+| GSM8K test 前 500 | 0.5260 ±0.0223 | **0.5680 ±0.0222** | 0.5560 ±0.0222 |
+| MATH-500 | 0.2880 ±0.0203 | 0.3020 ±0.0205 | 0.3540 ±0.0214 |
+
+- L1 的 GSM8K 比对照高 1.2 分（噪声内），MATH-500 比对照低 5.2 分——**不是干净的能力提升或下降**，
+  与"L1 是奖励膨胀、不是能力变化"的结论一致。
+- 评测侧的 reward gap 没有重算（`--skip-eval-loose`）：L1 的 MATH-500 长 LaTeX 答案会让
+  `math_verify` 在离线复算时卡死。训练侧 gap 不受影响。
+- 评测用批量评测后，同一 checkpoint 的 GSM8K 与之前 harness 的 0.518 差 0.8 分（4 题）：
+  这是 greedy 生成在不同批调度下的微小非确定性，不是判分差异；两个数都在 ±2.2 的 stderr 内。

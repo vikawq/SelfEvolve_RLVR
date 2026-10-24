@@ -8,7 +8,7 @@
 - 实现：`src/selfevolve/rewards/loose_L4_length.py`
 - 模型 / 数据 / seed：Qwen2.5-0.5B-Instruct、GSM8K train、seed=42
 - 步数：200，32 prompts × n5 = 160 seq/step，response 1024，actor micro=2 / logprob micro=2
-- wandb：训练 `runs/iev00mes`；逐步检测指标 `runs/<待补>`
+- wandb：训练 `runs/iev00mes`；逐步检测指标 `runs/mkj7s7vp`
 - 训练日志：`logs/EXP-W04-04-l4-length-bonus_*.log`；链路 `logs/w04_chain_train_rest.out`
 
 ## 结果

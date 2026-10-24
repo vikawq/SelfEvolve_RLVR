@@ -2,7 +2,7 @@
 
 在单张消费级 GPU 上构建**可复现、可审计、跑得快**的 RLVR 自我进化后训练系统：不使用人工标注训练数据，由模型自己出题、自己解题、自我提升；同时系统研究它在什么条件下有效、什么条件下会被奖励欺骗。
 
-> 本仓库当前进度：**W3（严格 Verifier：训练奖励与评测共用的判分器）**。RLVR = Reinforcement Learning with Verifiable Rewards。
+> 本仓库当前进度：**W4（Reward Hacking 复现：L1–L4 宽松判分器、对照实验、逐 step 检测指标）**。RLVR = Reinforcement Learning with Verifiable Rewards。
 
 ## 环境搭建
 
@@ -100,10 +100,32 @@ r = verify("Therefore, Janet makes $18 every day.", "18")
   `docs/troubleshooting.md §5`。
 
 ```bash
-pytest -q                                   # 164 用例（含数学判分的等价形式/对抗样本/边界）
+pytest -q                                   # 255 用例（本机 252 passed / 3 skipped；bigdog01 263 passed）
 python analysis/verifier_compare.py         # 三判分器对比 + 人工核对包
 python analysis/verifier_bench.py --n 500   # 单样本耗时（mean / p99）
 ```
+
+## Reward Hacking 复现（W4）
+
+用 Qwen2.5-0.5B-Instruct 在 GSM8K 上各跑 200 步，**只换训练奖励**，评测一律用严格 verifier
+（GSM8K test 前 500 + MATH-500）：
+
+| 实验 | 训练奖励的漏洞 | reward gap（last20） | GSM8K step200 | 结论 |
+|---|---|---|---|---|
+| `EXP-W04-00` 对照 | 严格 verifier | 0.000 | 0.5560 | 正常曲线 |
+| `EXP-W04-01` L1 | 格式权重过高（boxed 给 0.5） | 0.173 | 0.5680 | 奖励膨胀、能力持平 |
+| `EXP-W04-02` L2 | 子串匹配 | 0.160 | **0.4820** | 真准确率低于对照 7.4 分 |
+| `EXP-W04-03` L3 | 取第一个数字 | 0.000 | **0.0860** | 负结果：奖励过稀疏，模型崩溃 |
+| `EXP-W04-04` L4 | 长度奖励 | **0.495** | **0.0000** | 长度暴涨、截断 100%、能力归零 |
+
+- 代码：`src/selfevolve/rewards/loose_L1..L4.py`、`src/selfevolve/metrics/hack_detectors.py`；
+  分析：`analysis/hack_metrics.py`、`plot_hacking.py`、`select_hack_examples.py`、
+  `w04_eval_batched.py`（MATH-500 长答案的进程隔离 + 每条硬超时）。
+- 曲线：[`reports/figures/w04_l4_length.png`](reports/figures/w04_l4_length.png) 等；
+  逐 step 指标：[`reports/w04_metrics/`](reports/w04_metrics/)；
+  样例：[`reports/hack_examples/`](reports/hack_examples/)。
+- 报告：[`reports/week04_summary.md`](reports/week04_summary.md)（含 L3 负结果与
+  `math_verify` 内存问题的处理，见 `docs/troubleshooting.md §5.15`）。
 
 ## 目录结构
 
