@@ -92,13 +92,74 @@ def _git_commit() -> str:
         return "unknown"
 
 
-def _score_in_pool(
-    payloads: list[tuple[str, str, str, bool | None]], workers: int
+def _timeout_result(ground_truth: str) -> dict[str, Any]:
+    """单条评分硬超时时的结果：与严格 verifier 的 timeout 语义一致（判错 + 计数）。"""
+    from selfevolve.verifier.math_verifier import SCORER_VERSION, normalize_answer
+
+    return {
+        "correct": False,
+        "extracted": "",
+        "parse_ok": False,
+        "reason": "timeout",
+        "gold_normalized": normalize_answer(ground_truth)[:200],
+        "scorer": SCORER_VERSION,
+        "error": "timeout",
+    }
+
+
+def _score_one_hard(
+    payload: tuple[str, str, str, bool | None],
+    ctx: Any,
+    *,
+    timeout_s: float,
+) -> dict[str, Any]:
+    """一个样本一个 spawn 子进程；超过 `timeout_s` 直接 kill，按 timeout（判错）返回。
+
+    这样既避免了 sympy 全局缓存跨样本累积，也避免了单条病态表达式在 C 层长时间
+    不响应 SIGALRM（W4 实测：一条 MATH-500 能跑 18+ 分钟、RSS 114 GB）。
+    """
+    parent_conn, child_conn = ctx.Pipe(duplex=False)
+    proc = ctx.Process(target=w04_score_worker.score_task_into, args=(payload, child_conn), daemon=True)
+    proc.start()
+    child_conn.close()
+    try:
+        received = parent_conn.poll(timeout_s)
+        result = None
+        if received:
+            try:
+                result = parent_conn.recv()
+            except EOFError:
+                result = None
+        proc.join(timeout=3)
+        if proc.is_alive():
+            proc.terminate()
+            proc.join(timeout=3)
+            if proc.is_alive():
+                proc.kill()
+                proc.join(timeout=3)
+        if result is None:
+            return _timeout_result(payload[1])
+        return result
+    finally:
+        parent_conn.close()
+        if proc.is_alive():  # pragma: no cover - 极端情况
+            proc.kill()
+            proc.join(timeout=3)
+
+
+def _score_with_hard_timeout(
+    payloads: list[tuple[str, str, str, bool | None]],
+    *,
+    timeout_s: float,
 ) -> list[dict[str, Any]]:
-    """每条一个 spawn worker（maxtasksperchild=1），评完即退出，缓存不跨样本累积。"""
+    """逐条评分（每条独立进程 + 硬超时）。500 条约 2–3 分钟，换来内存有界。"""
     ctx = multiprocessing.get_context("spawn")
-    with ctx.Pool(processes=workers, maxtasksperchild=1) as pool:
-        return pool.map(w04_score_worker.score_task, payloads, chunksize=1)
+    results: list[dict[str, Any]] = []
+    for index, payload in enumerate(payloads):
+        results.append(_score_one_hard(payload, ctx, timeout_s=timeout_s))
+        if (index + 1) % 50 == 0:
+            print(f"  [score] {index + 1}/{len(payloads)}", flush=True)
+    return results
 
 
 def _plan_budgets(specs, tokenizer) -> list[dict[str, Any]]:
@@ -128,6 +189,7 @@ def _process_dataset(
     seed: int,
     workers: int,
     rescore_only: bool,
+    score_timeout_s: float,
 ) -> dict[str, Any]:
     spec = plan["spec"]
     examples = plan["examples"]
@@ -172,7 +234,7 @@ def _process_dataset(
                     (gen["finish_reason"] if isinstance(gen, dict) else gen.finish_reason) != "length",
                 )
             )
-    scored = _score_in_pool(payloads, workers)
+    scored = _score_with_hard_timeout(payloads, timeout_s=score_timeout_s)
 
     per_question: list[float] = []
     n_correct = 0
@@ -259,7 +321,7 @@ def _process_dataset(
             "engine_max_model_len": 0,
             "budget_ok": True,
         },
-        "scoring_mode": f"spawn_pool(workers={workers}, maxtasksperchild=1)",
+        "scoring_mode": f"spawn_process_per_sample(hard_timeout={score_timeout_s}s)",
     }
 
 
@@ -275,7 +337,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.85)
     parser.add_argument("--dtype", default="bfloat16")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument(
+        "--workers", type=int, default=4, help="仅记录；评分现在是每条样本一个 spawn 进程"
+    )
+    parser.add_argument(
+        "--score-timeout-s",
+        type=float,
+        default=30.0,
+        help="单条评分的硬超时（秒）；超时 kill 子进程并按 timeout/错 记",
+    )
     parser.add_argument("--rescore-only", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args(argv)
@@ -369,6 +439,7 @@ def main(argv: list[str] | None = None) -> int:
                 seed=args.seed,
                 workers=args.workers,
                 rescore_only=args.rescore_only,
+                score_timeout_s=args.score_timeout_s,
             )
             result["length_budget"]["engine_max_model_len"] = engine_len
             summary["datasets"][spec.name] = result

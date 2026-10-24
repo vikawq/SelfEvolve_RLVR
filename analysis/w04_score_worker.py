@@ -29,4 +29,15 @@ def score_task(payload: tuple[str, str, str, bool | None]) -> dict[str, Any]:
     return score(text, ground_truth, answer_type, finished=finished)
 
 
-__all__ = ["score_task"]
+def score_task_into(payload: tuple[str, str, str, bool | None], conn: Any) -> None:
+    """评一条并把结果写回管道；父进程超时会直接 kill 本进程，所以这里不做超时。"""
+    try:
+        conn.send(score_task(payload))
+    except BaseException as exc:  # pragma: no cover - 子进程崩溃路径
+        conn.send({"correct": False, "extracted": "", "parse_ok": False, "reason": "error",
+                   "gold_normalized": "", "error": f"{type(exc).__name__}: {str(exc)[:200]}"})
+    finally:
+        conn.close()
+
+
+__all__ = ["score_task", "score_task_into"]
