@@ -32,7 +32,8 @@
 五个实验**只有奖励函数不同**：模型/数据/步数/seed/优化器/显存参数逐字一致。训练侧的严格准确率
 来自 reward dict 的 `strict_acc`（同一批 rollout 上用严格 verifier 复判），随 rollout dump 落盘
 （`trainer.rollout_data_dir`，全量 160 条/步，不是抽样）。评测侧的严格准确率来自
-`eval/run_eval.py`（独立 harness，step0/100/200）。
+`eval/run_eval.py`（独立 harness，step0/100/200）；**L1 因为 MATH-500 长答案会让
+`math_verify` 内存爆掉，改用 `analysis/w04_eval_batched.py`（同一个判分函数、每条 30 s 硬超时）**。
 
 ## 2. 关键结果
 
@@ -62,8 +63,10 @@ step200 0.5680（比对照高 1.2，噪声内），MATH-500 0.3020（低 5.2）�
 **0.482**（比对照低 **7.4 分**），MATH-500 从 0.328 跌到 **0.288**（比对照低 6.6 分）；
 截断率 GSM8K 0.6%→4.4%、MATH-500 16.4%→25.6%。160 条 rollout 里约 14% 是"最终答案错、
 金标数字在推理里"的假阳性（例：金标 `5000` 分，模型算出 5000 分后换算成 50 美元并
-`\boxed{50}`，子串匹配仍给 1.0）。**这是本周唯一一个"真准确率显著低于对照组"的漏洞**，
-也是最像任务包设想的那种 reward hacking。详见 `experiments/notes/EXP-W04-02-l2-substring.md`。
+`\boxed{50}`，子串匹配仍给 1.0）。**L2 与 L4 都出现了"真实准确率低于对照组"**：
+L2 是温和但显著（6–7 分），L4 是直接归零；L1 持平、L3 崩溃。L2 是最像任务包设想的
+"奖励只涨一点、真准确率悄悄掉"的那种 reward hacking。详见
+`experiments/notes/EXP-W04-02-l2-substring.md`。
 
 **L3（取第一个数字）**：**负结果 + 训练崩溃**。训练侧宽松奖励 ≈ 严格准确率 ≈ **0.090**
 （最后 20 步），gap 0、onset 不适用。真相是模型退化成只输出 `#### 4` / `#### ###.2`
@@ -111,8 +114,10 @@ L3 是负结果（漏洞不可利用 + 奖励过稀疏导致 collapse）。本�
 
 1. **micro batch 从直觉值 4 降到 2**：response 1024 下 actor micro=4 与 logprob micro=8 都 OOM；
    实测 actor 2 / logprob 2 通过（`docs/troubleshooting.md §5.13`）。
-2. **没有改评测代码**：任务要求"在评测输出上算 hack 指标"，改为离线分析
-   `outputs/eval/**/*.jsonl`（`analysis/hack_metrics.py`），`eval/` 未动。
+2. **没有改 `eval/` 代码**：任务要求"在评测输出上算 hack 指标"，改为离线分析
+   `outputs/eval/**/*.jsonl`（`analysis/hack_metrics.py`）；L1 的评测新增了
+   `analysis/w04_eval_batched.py`（**同一个判分函数**，只是进程隔离 + 硬超时），
+   `eval/` 目录未动。
 3. **L5 未做**：需要付费 API/本地放不下 judge，按协议先请示；见 §8。
 4. **训练内部 validation 关闭**（`test_freq=0`）：训练内验证用的是同一个宽松奖励，对 W4 没有信息量；
    真实准确率由外部严格评测给。
@@ -127,7 +132,7 @@ L3 是负结果（漏洞不可利用 + 奖励过稀疏导致 collapse）。本�
 | 4 | 分析训练中的 dump 报 15/170 bad lines | 模型输出含 U+2028，`splitlines()` 误切 JSONL | 改用 `split("\n")` | 无 |
 | 5 | wandb 训练循环不记录 reward 额外键 | v0.9.1 行为，只有 validation 消费 | 伴生 `__metrics` run 记录逐步曲线 | 无（展示层） |
 | 6 | L1 step100 的 MATH-500 评测 RSS 涨到 114 GB、整机换页 | `math_verify`/sympy 全局缓存随长 LaTeX 答案线性累积（约 150 MB/条） | `analysis/w04_eval_batched.py`：每条样本一个 spawn worker，评完释放；判分函数不变 | 重跑评测约 30 min |
-| 7 | 批量评测仍被**单条** MATH-500 卡住（一个 worker 99% CPU、15 GB、2+ 分钟不返回） | 单条病态表达式在 C 层（大整数/符号运算）不响应 SIGALRM，5 s 超时失效 | 给批量评测加**每条 30 s 硬超时**：超时 kill 子进程，按严格 verifier 的 timeout 语义判错并计数 | 1 条样本按 timeout 计（W4 的 L1 MATH-500 共 1 条） |
+| 7 | 批量评测仍被**单条** MATH-500 卡住（一个 worker 99% CPU、15 GB、2+ 分钟不返回） | 单条病态表达式在 C 层（大整数/符号运算）不响应 SIGALRM，5 s 超时失效 | 给批量评测加**每条 30 s 硬超时**：超时 kill 子进程，按严格 verifier 的 timeout 语义判错并计数 | L1 step100 MATH-500 有 **1 条** timeout（step200 为 0） |
 
 ## 6. GPU 时长 / 花费
 
