@@ -27,9 +27,23 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def _scan(path: Path, source: str) -> list[dict[str, Any]]:
+def _summary_source(run_dir: Path) -> str:
+    """从 summary.json 判断这一行是 harness 还是 batched 评分（batched 才有 scoring_mode）。"""
+    path = run_dir / "summary.json"
+    if not path.exists():
+        return "unknown"
+    try:
+        summary = json.loads(path.read_text(encoding="utf-8"))
+        mode = summary.get("datasets", {}).get("math500", {}).get("scoring_mode")
+        return mode or "eval/run_eval.py"
+    except Exception:  # pragma: no cover
+        return "unknown"
+
+
+def _scan(path: Path) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     run = path.parent.name
+    source = _summary_source(path.parent)
     for index, line in enumerate(path.read_text(encoding="utf-8").split("\n")):
         if not line.strip():
             continue
@@ -74,14 +88,14 @@ def main(argv: list[str] | None = None) -> int:
     by_key: dict[tuple[str, int, str], dict[str, Any]] = {}
     # 先扫 harness，再用 batched 覆盖（batched 是报告采用的口径）
     roots = [
-        (Path(args.eval_root), "eval/run_eval.py"),
-        (Path(args.batched_root), "w04_eval_batched.py --rescore-only"),
+        Path(args.eval_root),
+        Path(args.batched_root),
     ]
-    for root, source in roots:
+    for root in roots:
         if not root.exists():
             continue
         for path in sorted(root.glob("*/math500.jsonl")):
-            for record in _scan(path, source):
+            for record in _scan(path):
                 key = (record["run"], record["sample_index"], record["sample_id"])
                 by_key[key] = record
 
