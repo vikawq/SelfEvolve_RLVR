@@ -49,3 +49,7 @@
 step100/200 用 `eval/run_eval.py`（标准 harness，严格 verifier）。L4 的输出虽然长，
 但都是**重复/展开的普通文本**，MATH-500 评测 65 s/checkpoint 正常完成，未触发
 L1 那种 sympy 缓存膨胀（`docs/troubleshooting.md §5.15`）。
+
+**补测（2026-10-24）**：用 `analysis/w04_eval_batched.py --rescore-only` 在同一批生成文本上
+复核 MATH-500，step100/200 与 harness 完全一致（0.2200/0.0260，Δ=0.0000，0 timeout），
+见 `reports/w04_metrics/math500_path_compare.md`。

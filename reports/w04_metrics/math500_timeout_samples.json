@@ -1,0 +1,28 @@
+{
+  "rule": "analysis/w04_eval_batched.py 每条样本 30 s 硬超时；超时 kill 子进程并按严格 verifier 的 timeout 语义判错（correct=false, reason=timeout）。",
+  "samples": [
+    {
+      "run": "EXP-W04-01-l1-format-weight-global_step_100",
+      "dataset": "math500",
+      "sample_index": 65,
+      "sample_id": "test/prealgebra/1747.json",
+      "output_index": 0,
+      "gold": "1",
+      "reason": "timeout",
+      "error": "timeout",
+      "extracted": "",
+      "num_tokens": 215,
+      "finish_reason": "stop",
+      "text_chars": 467,
+      "text_sha256": "a5659d398f87e7c1480f73e7d3adbc89c9fa4c6238fe4013c795530b5967df0d",
+      "timeout_s": 30,
+      "messages": [
+        {
+          "role": "user",
+          "content": "What is $1^{(2^{235423523})}$?\n\nLet's think step by step and output the final answer after \"####\"."
+        }
+      ],
+      "text": "To determine the value of \\(1^{(2^{235423523})}\\), we need to understand what the expression \\(1^{(2^{235423523})}\\) means. The expression \\(1^{(2^{235423523})}\\) is equal to 1 raised to the power of \\(2^{235423523}\\). Mathematically, this is written as:\n\n\\[1^{(2^{235423523})} = 1^{2^{235423523}}\\]\n\nSince the base 1 is always 1, the expression simplifies to:\n\n\\[1^{2^{235423523}} = 2^{2^{235423523}}\\]\n\nTherefore, the final answer is:\n\n\\[\\boxed{2^{2^{235423523}}}\\]"
+    }
+  ]
+}

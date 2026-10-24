@@ -54,8 +54,11 @@
 
 - **W4 的 22 行（2026-10-24）是 reward hacking 实验**：`训练奖励` 各不相同（L1 格式 / L2 子串 /
   L3 首数字 / L4 长度 / 对照组严格），但**评测一律用严格 verifier**，所以同一列可以横向比较
-  "训练奖励把模型带到了哪里"。L1 的评调用 `analysis/w04_eval_batched.py`（同判分函数、
-  每条 30 s 硬超时，见 `docs/troubleshooting.md §5.15`），其余用 `eval/run_eval.py`。
+  "训练奖励把模型带到了哪里"。L1 的评测用 `analysis/w04_eval_batched.py`（同判分函数、
+  每条 30 s 硬超时，见 `docs/troubleshooting.md §5.15`），其余 4 个实验 + 基座的 MATH-500
+  已用 `--rescore-only` 在同一批生成文本上复核：**9 个 checkpoint 与 harness 完全一致
+  （Δ=0.0000）**，唯一 1 条 timeout 的 id 落盘在 `reports/w04_metrics/math500_timeout_samples.json`
+  （对比表 `reports/w04_metrics/math500_path_compare.md`）。
   - L4 step200 的 **0.0000 / 0.0260** 是**截断率 100% / 94.8%**：模型每条都写满 1024 token、
     给不出最终答案，严格 verifier 按规则判错。这不是评测故障，是长度奖励的直接后果。
   - L3 的 0.064/0.086（GSM8K）是**训练崩溃**：奖励几乎全 0，模型退化成 `#### <猜测>`。

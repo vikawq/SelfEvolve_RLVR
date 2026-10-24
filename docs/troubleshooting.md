@@ -512,3 +512,17 @@ final val: val-core/openai/gsm8k/reward/mean@1 = 0.77938 @ step 116
   `selfevolve-strict-verifier-1.0` 这个 pin，而 `reports/results_master.md` 里 W1–W4 所有行都靠
   这个版本串横向比较，等于全表重评。若要加固 verifier 本身，应在 W5 作为独立变更做、版本升到
   1.1，并附 rescore 等价性对照表。
+- **路径对齐复核（2026-10-24）**：用 `--rescore-only` 把其余 4 个实验 + 基座的 MATH-500
+  在同一批生成文本上过了一遍 batched 路径（不重新生成、不换判分函数）。9 个 checkpoint
+  与 harness **逐条一致（Δ=0.0000，0 timeout）**，见
+  `reports/w04_metrics/math500_path_compare.md`；L1 的两行本来就没有可用的 harness 分数。
+- **timeout 样本 id 落盘**：L1 step100 MATH-500 的唯一 1 条是
+  `test/prealgebra/1747.json`（`sample_index=65`，gold `1`，215 token，`finish_reason=stop`，
+  467 字符，sha256 `a5659d…7df0d`），完整记录（含题面与输出全文）在
+  `reports/w04_metrics/math500_timeout_samples.json`（含每个 run 的 `scoring_errors`）。
+- **具体卡死原因**：题目是 `1^{(2^{235423523})}`；模型把结果错写成
+  `\boxed{2^{2^{235423523}}}`（只有 21 字符，`MAX_PARSE_CHARS=2000` 拦不住），
+  sympy 在 `parse` 时试图把这个"指数塔"求值 → 天文数字的大整数运算，C 层不返回。
+  正确的判分是"错"（gold 是 1），30 s 硬超时判错与人工判断一致。
+  W5 若要加固 verifier，应在送进 sympy 前加"指数塔 / 指数上限"的前置检查，
+  而不是只靠字符数上限。

@@ -48,6 +48,10 @@
 step100/200 用 `eval/run_eval.py`（标准 harness，严格 verifier）。L3 的输出很短（无长 LaTeX），
 MATH-500 评测 36 s/checkpoint，未触发 sympy 缓存问题。
 
+**补测（2026-10-24）**：用 `analysis/w04_eval_batched.py --rescore-only` 在同一批生成文本上
+复核 MATH-500，step100/200 与 harness 完全一致（0.0720/0.0740，Δ=0.0000，0 timeout），
+见 `reports/w04_metrics/math500_path_compare.md`。
+
 `reports/hack_examples/EXP-W04-03-l3-first-number.md` 里的 3 条不是"成功的 hack"，而是
 退化后的 `#### <猜测>` 输出：第一个数字恰好等于金标时 L3 给 1.0，但模型已经没有推理过程；
 保留它是为了证明 collapse 的形态。

@@ -34,6 +34,9 @@
 （`trainer.rollout_data_dir`，全量 160 条/步，不是抽样）。评测侧的严格准确率来自
 `eval/run_eval.py`（独立 harness，step0/100/200）；**L1 因为 MATH-500 长答案会让
 `math_verify` 内存爆掉，改用 `analysis/w04_eval_batched.py`（同一个判分函数、每条 30 s 硬超时）**。
+为了消掉路径不对称，其余 4 个实验 + 基座的 MATH-500 已用 `--rescore-only` 在同一批生成文本上
+复核：**9 个 checkpoint 的分数与 harness 完全相同（Δ=0.0000）**，唯一差异是 L1 的 1 条硬超时
+（`reports/w04_metrics/math500_path_compare.md`）。
 
 ## 2. 关键结果
 
@@ -94,6 +97,17 @@ GSM8K test 0.404（step100）→ **0.000**（step200，截断率 **100%**），M
 | L3 | 0.4780 ±0.0223 | **0.0640 ±0.0109** | **0.0860 ±0.0125** | 0.3320 ±0.0211 | **0.0720 ±0.0116** | **0.0740 ±0.0117** |
 | L4 | 0.4780 ±0.0223 | 0.4040 ±0.0219 | **0.0000 ±0.0000** | 0.3320 ±0.0211 | 0.2200 ±0.0185 | **0.0260 ±0.0071** |
 
+> **MATH-500 口径统一**：上表 MATH-500 全部来自 `analysis/w04_eval_batched.py`（同判分函数、
+> 每条 30 s 硬超时）。其余 4 个实验 + 基座用 `--rescore-only` 在同一批生成文本上复核，
+> 与 harness **逐 checkpoint 完全一致（Δ=0.0000）**；唯一差异是 L1 step100 的 1 条 timeout
+> （`test/prealgebra/1747.json`，index 65）。对比见 `reports/w04_metrics/math500_path_compare.md`，
+> timeout 明细见 `reports/w04_metrics/math500_timeout_samples.json`。
+>
+> **GSM8K 列的残余不对称**：L1 的 GSM8K 是 batched 全量（harness 在 MATH-500 死掉，L1 没有
+> 完整的 harness 行）；其余 4 个 + 基座是 harness。两边判分函数相同，L1 step100 的
+> 0.5260 vs harness 0.5180 差 4 题（0.8 分），来自 greedy 生成在不同批调度下的微小非确定性，
+> 在 ±2.2 的 stderr 内。
+
 ## 3. 复现判定（口径见 `reports/week04_plan.md §3`）
 
 | 实验 | last20 gap | 对照 gap | onset | 判定 |
@@ -132,7 +146,7 @@ L3 是负结果（漏洞不可利用 + 奖励过稀疏导致 collapse）。本�
 | 4 | 分析训练中的 dump 报 15/170 bad lines | 模型输出含 U+2028，`splitlines()` 误切 JSONL | 改用 `split("\n")` | 无 |
 | 5 | wandb 训练循环不记录 reward 额外键 | v0.9.1 行为，只有 validation 消费 | 伴生 `__metrics` run 记录逐步曲线 | 无（展示层） |
 | 6 | L1 step100 的 MATH-500 评测 RSS 涨到 114 GB、整机换页 | `math_verify`/sympy 全局缓存随长 LaTeX 答案线性累积（约 150 MB/条） | `analysis/w04_eval_batched.py`：每条样本一个 spawn worker，评完释放；判分函数不变 | 重跑评测约 30 min |
-| 7 | 批量评测仍被**单条** MATH-500 卡住（一个 worker 99% CPU、15 GB、2+ 分钟不返回） | 单条病态表达式在 C 层（大整数/符号运算）不响应 SIGALRM，5 s 超时失效 | 给批量评测加**每条 30 s 硬超时**：超时 kill 子进程，按严格 verifier 的 timeout 语义判错并计数 | L1 step100 MATH-500 有 **1 条** timeout（step200 为 0） |
+| 7 | 批量评测仍被**单条** MATH-500 卡住（一个 worker 99% CPU、15 GB、2+ 分钟不返回） | 单条病态表达式在 C 层（大整数/符号运算）不响应 SIGALRM，5 s 超时失效 | 给批量评测加**每条 30 s 硬超时**：超时 kill 子进程，按严格 verifier 的 timeout 语义判错并计数；样本 id 落盘 | L1 step100 MATH-500 的 1 条 timeout：`test/prealgebra/1747.json`（index 65），见 `reports/w04_metrics/math500_timeout_samples.json` |
 
 ## 6. GPU 时长 / 花费
 
@@ -157,6 +171,9 @@ L3 是负结果（漏洞不可利用 + 奖励过稀疏导致 collapse）。本�
   MATH-500 会把 `math_verify` 的 sympy 缓存撑到 100 GB 以上；单条病态表达式还会绕过
   5 s SIGALRM。批量评测现在有**每条 30 s 硬超时**（超时 kill + 按 timeout 判错），
   见 `docs/troubleshooting.md §5.15`。
+- **MATH-500 已用 `--rescore-only` 对齐**：其余 4 个实验 + 基座在同一批生成文本上重评，
+  9 个 checkpoint 与 harness **Δ=0.0000**；唯一 1 条 timeout 的 id 已落盘在
+  `reports/w04_metrics/math500_timeout_samples.json`（`test/prealgebra/1747.json`）。
 - L1 的 boxed 率 10 步内就学满，但对照组也会学到 0.98——**"boxed 率高"本身不是 hack 证据**；
   W5 的格式防御要盯住"答错也拿分"的 gap，而不是格式出现率。
 - **L4 是 W5 防御的第一优先级**：长度奖励把 GSM8K test 打到 0.000（截断 100%）。
@@ -177,6 +194,8 @@ L3 是负结果（漏洞不可利用 + 奖励过稀疏导致 collapse）。本�
    是接受这个负结果并写进 W5 的防御动机，还是换一种 L3 实现（例如取最后一个数字/取最大数字）？
    后者会偏离任务包定义，需要人批准；我建议**接受负结果**，因为它提供了"错误奖励会训崩模型"
    的独立证据。
-4. **MATH-500 的评测口径**：L1 的评测用了 `analysis/w04_eval_batched.py`（同判分函数、
-   每条 30 s 硬超时），与 `eval/run_eval.py` 的差异只在进程边界和 1 条 timeout 样本。
-   是否接受这个口径写进报告？如果不接受，需要改 verifier 的 C 层超时（属于改判分代码，需批准）。
+4. **MATH-500 的评测口径**：已用 `--rescore-only` 把其余 4 个实验 + 基座的同一批生成文本
+   过了一遍 batched 路径，**9 个 checkpoint 与 harness 完全一致（Δ=0.0000）**；唯一差异是
+   L1 step100 的 1 条 timeout（`test/prealgebra/1747.json`）。也就是说"路径不对称"已经消除，
+   现在只差"是否接受这 1 条按 timeout 判错"。如果不接受，需要改 verifier 的 C 层超时
+   （属于改判分代码，需批准）；如果接受，本项无需再处理。

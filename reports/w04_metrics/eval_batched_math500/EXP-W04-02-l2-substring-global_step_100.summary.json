@@ -1,0 +1,94 @@
+{
+  "config": {
+    "argv": [
+      "analysis/w04_eval_batched.py",
+      "--model",
+      "models/merged/EXP-W04-02-l2-substring-global_step_100",
+      "--datasets",
+      "math500",
+      "--limit",
+      "500",
+      "--output-dir",
+      "outputs/eval_batched",
+      "--run-name",
+      "EXP-W04-02-l2-substring-global_step_100",
+      "--rescore-only",
+      "--overwrite",
+      "--score-timeout-s",
+      "30"
+    ],
+    "model": "/home/angus/workspace/SelfEvolve_RLVR/models/merged/EXP-W04-02-l2-substring-global_step_100",
+    "datasets": [
+      "math500"
+    ],
+    "prompt_templates": {
+      "math500": "####_suffix"
+    },
+    "limit": 500,
+    "max_model_len": 1920,
+    "max_model_len_mode": "auto",
+    "max_model_len_auto": 1920,
+    "length_budgets": {
+      "math500": {
+        "prompt_tokens_max": 835,
+        "prompt_tokens_mean": 115.158,
+        "max_tokens": 1024,
+        "required_max_model_len": 1920
+      }
+    },
+    "gpu_memory_utilization": 0.85,
+    "dtype": "bfloat16",
+    "seed": 42,
+    "workers": 4,
+    "rescore_only": true,
+    "scorer": "selfevolve-strict-verifier-1.0+math-verify-0.9.0",
+    "git_commit": "d86be5eb9e4e65f9a5035dc5cb1966eb55aa75ac",
+    "started_at": "2026-10-24T01:53:06.604044+00:00",
+    "versions": {
+      "python": "3.11.17",
+      "torch": "2.11.0",
+      "vllm": "0.24.0",
+      "transformers": "5.9.0",
+      "math-verify": "0.9.0",
+      "datasets": "5.1.0"
+    }
+  },
+  "datasets": {
+    "math500": {
+      "dataset": "math500",
+      "display_name": "MATH-500",
+      "num_samples": 500,
+      "metric": "pass@1",
+      "score": 0.328,
+      "std": 0.46995501426292113,
+      "stderr": 0.021017027165175495,
+      "binomial_stderr": 0.02099599961897504,
+      "reported_stderr_kind": "binomial",
+      "num_generations": 500,
+      "n_per_sample": 1,
+      "prompt_template": "####_suffix",
+      "accuracy_over_generations": 0.328,
+      "truncation_rate": 0.164,
+      "empty_answer_rate": 0.14,
+      "avg_output_tokens": 594.98,
+      "elapsed_s": 105.5697910785675,
+      "scoring_errors": {},
+      "generation": {
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "n": 1,
+        "max_tokens": 1024,
+        "seed": 42
+      },
+      "length_budget": {
+        "prompt_tokens_max": 835,
+        "prompt_tokens_mean": 115.158,
+        "required_max_model_len": 1920,
+        "engine_max_model_len": 1920,
+        "budget_ok": true
+      },
+      "scoring_mode": "spawn_process_per_sample(hard_timeout=30.0s)"
+    }
+  },
+  "finished_at": "2026-10-24T01:54:52.176900+00:00"
+}

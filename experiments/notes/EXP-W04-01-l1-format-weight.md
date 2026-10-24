@@ -55,5 +55,11 @@ step100/200 用 `analysis/w04_eval_batched.py`（与 `eval/run_eval.py` **同一
   与"L1 是奖励膨胀、不是能力变化"的结论一致。
 - 评测侧的 reward gap 没有重算（`--skip-eval-loose`）：L1 的 MATH-500 长 LaTeX 答案会让
   `math_verify` 在离线复算时卡死。训练侧 gap 不受影响。
+- **唯一的 1 条硬超时**：MATH-500 step100 的 `test/prealgebra/1747.json`（index 65，gold `1`，
+  215 token，`finish_reason=stop`，467 字符）在 30 s 内没评完，按严格 verifier 的 timeout 语义
+  判错。id 与 sha256 已落盘：`reports/w04_metrics/math500_timeout_samples.json`；step200 为 0。
 - 评测用批量评测后，同一 checkpoint 的 GSM8K 与之前 harness 的 0.518 差 0.8 分（4 题）：
   这是 greedy 生成在不同批调度下的微小非确定性，不是判分差异；两个数都在 ±2.2 的 stderr 内。
+- 其余 4 个实验 + 基座的 MATH-500 已用 `--rescore-only` 在同一批生成文本上复核，
+  与本实验的 batched 路径 **逐 checkpoint 一致（Δ=0.0000）**，见
+  `reports/w04_metrics/math500_path_compare.md`。

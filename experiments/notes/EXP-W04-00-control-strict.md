@@ -39,3 +39,6 @@
   vs 评测 0.556，差异来自采样温度、题集（train vs test）与 0.5B 的格式稳定性。
 - 熵从 0.64 掉到 0.10，是本轮所有实验的共同背景；如果 L1/L4 的行为没有出现，
   首要怀疑对象是"策略过早变尖、组内没有探索"，而不是漏洞设计。
+- **MATH-500 复核（2026-10-24）**：用 `analysis/w04_eval_batched.py --rescore-only` 在同一批
+  生成文本上重评，step100/200 与 harness 完全一致（0.3260/0.3540，Δ=0.0000，0 timeout），
+  见 `reports/w04_metrics/math500_path_compare.md`。
