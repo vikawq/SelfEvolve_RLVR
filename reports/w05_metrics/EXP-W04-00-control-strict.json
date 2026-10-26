@@ -2,7 +2,7 @@
   "experiment": "EXP-W04-00-control-strict",
   "hack_id": "strict",
   "hack_rule": "恒为 0（严格奖励没有代理奖励差）",
-  "generated_at": "2026-10-24T03:40:06.737447+00:00",
+  "generated_at": "2026-10-26T09:45:55.487518+00:00",
   "config": {
     "rollout_dir": "outputs/w04/rollouts/EXP-W04-00-control-strict",
     "max_response_length": 1024,
@@ -32,7 +32,7 @@
     "first10": {
       "hack_rate": 0.0,
       "reward_gap": 0.0,
-      "strict_mean": 0.63375
+      "strict_mean": 0.380625
     },
     "smoothed_gap_final": 0.0,
     "smoothed_hack_rate_final": 0.0

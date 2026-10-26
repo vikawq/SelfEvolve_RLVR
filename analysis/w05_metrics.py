@@ -166,6 +166,17 @@ def _window_mean(steps: Sequence[dict[str, Any]], key: str, n: int) -> float:
     return sum(values) / len(values) if values else 0.0
 
 
+def _window_mean_first(steps: Sequence[dict[str, Any]], key: str, n: int) -> float:
+    """前 n 步的均值。
+
+    注意不要用 `_window_mean`：它取的是 `steps[-n:]`（末尾 n 步）。2026-10-26 之前 `first10`
+    误用了它，于是 10 个实验的 `first10` 全都等于 last10，并且把一个错数字写进了 P7 报告
+    （见 `docs/troubleshooting.md §5.19`）。
+    """
+    values = [float(row[key]) for row in steps[:n] if key in row]
+    return sum(values) / len(values) if values else 0.0
+
+
 def _eval_entries(eval_root: Path, experiment: str) -> list[dict[str, Any]]:
     pattern = re.compile(rf"^{re.escape(experiment)}-global_step_(\d+)$")
     entries: list[dict[str, Any]] = []
@@ -248,9 +259,9 @@ def main(argv: list[str] | None = None) -> int:
             "len_chars_mean": _window_mean(steps, "len_chars_mean", 50),
         },
         "first10": {
-            "hack_rate": _window_mean(steps, "hack_rate", 10),
-            "reward_gap": _window_mean(steps, "reward_gap", 10),
-            "strict_mean": _window_mean(steps, "strict_mean", 10),
+            "hack_rate": _window_mean_first(steps, "hack_rate", 10),
+            "reward_gap": _window_mean_first(steps, "reward_gap", 10),
+            "strict_mean": _window_mean_first(steps, "strict_mean", 10),
         },
         "smoothed_gap_final": rolling_mean(gaps, 10)[-1],
         "smoothed_hack_rate_final": rolling_mean(rates, 10)[-1],

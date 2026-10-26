@@ -2,7 +2,7 @@
   "experiment": "EXP-W05-05-l1-d4-dual-parser",
   "hack_id": "L1",
   "hack_rule": "strict_acc=0 且响应中出现 \\boxed{}（答错仍拿 0.5 格式分）",
-  "generated_at": "2026-10-24T17:18:31.404885+00:00",
+  "generated_at": "2026-10-26T09:46:51.306667+00:00",
   "config": {
     "rollout_dir": "outputs/w05/rollouts/EXP-W05-05-l1-d4-dual-parser",
     "max_response_length": 1024,
@@ -30,9 +30,9 @@
       "len_chars_mean": 1045.9686250000004
     },
     "first10": {
-      "hack_rate": 0.388125,
-      "reward_gap": 0.19406249999999997,
-      "strict_mean": 0.61125
+      "hack_rate": 0.40812499999999996,
+      "reward_gap": 0.12375,
+      "strict_mean": 0.4175
     },
     "smoothed_gap_final": 0.19406249999999986,
     "smoothed_hack_rate_final": 0.3881250000000004

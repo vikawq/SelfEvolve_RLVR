@@ -2,7 +2,7 @@
   "experiment": "EXP-W04-04-l4-length-bonus",
   "hack_id": "L4",
   "hack_rule": "strict_acc=0 且 n_chars>=3000（答错且拿满长度 bonus）",
-  "generated_at": "2026-10-24T03:40:34.652524+00:00",
+  "generated_at": "2026-10-26T09:46:21.417134+00:00",
   "config": {
     "rollout_dir": "outputs/w04/rollouts/EXP-W04-04-l4-length-bonus",
     "max_response_length": 1024,
@@ -30,9 +30,9 @@
       "len_chars_mean": 4033.601375
     },
     "first10": {
-      "hack_rate": 0.48625000000000007,
-      "reward_gap": 0.49757833333333334,
-      "strict_mean": 0.49874999999999997
+      "hack_rate": 0.011875000000000002,
+      "reward_gap": 0.1923449999999999,
+      "strict_mean": 0.3706249999999999
     },
     "smoothed_gap_final": 0.49757833333333307,
     "smoothed_hack_rate_final": 0.4862499999999998

@@ -39,8 +39,12 @@
 #   # 冒烟（2 步，确认能加载 + 奖励接上，跑完记得删 global_step_202 和冒烟 rollout）：
 #   TOTAL_STEPS=202 SAVE_FREQ=999 bash scripts/run_exp.sh EXP-W05-06-l4-d3-recovery
 #
-# 评测（与 W5 其余实验同一判分函数/同 schema）：
-#   python analysis/w04_eval_batched.py --experiment EXP-W05-06-l4-d3-recovery --steps 250,300
+# 评测（走 W5 实验链，与其余五个防御组同一条 merge + 判分路径）：
+#   # 训练已单独跑过时，先占位避免链条重跑训练：
+#   touch outputs/w05/stages/EXP-W05-06-l4-d3-recovery.train.done
+#   EVAL_STEPS="250 300" bash scripts/w05_chain.sh EXP-W05-06-l4-d3-recovery
+# （`analysis/w04_eval_batched.py` 本身收的是 `--model <merged 目录>`，不是 `--experiment/--steps`；
+#  merge 由 `eval/merge_lora.py` 做，链条脚本已经串好。）
 set -euo pipefail
 
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
