@@ -30,6 +30,10 @@ export REWARD_PATH=${REWARD_PATH:-$REPO_ROOT/src/selfevolve/rewards/strict_rewar
 export TOTAL_STEPS=${TOTAL_STEPS:-200}
 export SAVE_FREQ=${SAVE_FREQ:-100}
 export TEST_FREQ=${TEST_FREQ:-0}
+# W4/W5 的所有实验都是 1 epoch 内跑完 200 步（GSM8K train 7473 题 / bs 32 = 233 步/epoch）。
+# 只有"从别的实验的 checkpoint 续训"的恢复实验（EXP-W05-06）需要 >1，因为 global_step 从 200
+# 起算，留在 epoch 0 里只剩 33 步。默认值与 W4/W5 既有实验完全一致。
+export TOTAL_EPOCHS=${TOTAL_EPOCHS:-1}
 
 MODEL_DIR=${MODEL_DIR:-$REPO_ROOT/models}
 DATA_DIR=${DATA_DIR:-$REPO_ROOT/data/gsm8k}
@@ -61,12 +65,35 @@ if [[ -n "${TOTAL_STEPS:-}" ]]; then
   STEPS_ARGS+=(trainer.total_training_steps="${TOTAL_STEPS}")
 fi
 
+# 续训来源。默认 auto = 从本实验自己的 CKPT_DIR 找最新 checkpoint（W4/W5 既有行为）。
+# 恢复实验用 RESUME_MODE=resume_path + RESUME_FROM_PATH=<绝对路径，含 global_step_N> 从
+# **另一个**实验的 checkpoint 起跑；写入仍然只去 trainer.default_local_dir，不碰来源目录。
+# 不要在命令行上重复传 trainer.resume_mode —— Hydra 对重复的 override key 会报错。
+RESUME_MODE=${RESUME_MODE:-auto}
+RESUME_ARGS=(trainer.resume_mode="$RESUME_MODE")
+if [[ "$RESUME_MODE" == "resume_path" ]]; then
+  if [[ -z "${RESUME_FROM_PATH:-}" ]]; then
+    echo "[$EXP_ID] ERROR: RESUME_MODE=resume_path 需要同时给 RESUME_FROM_PATH" >&2
+    exit 2
+  fi
+  if [[ "$RESUME_FROM_PATH" != /* || "$RESUME_FROM_PATH" != *global_step_* ]]; then
+    echo "[$EXP_ID] ERROR: RESUME_FROM_PATH 必须是含 global_step_N 的绝对路径：$RESUME_FROM_PATH" >&2
+    exit 2
+  fi
+  if [[ ! -d "$RESUME_FROM_PATH/actor" ]]; then
+    echo "[$EXP_ID] ERROR: 来源 checkpoint 不完整（缺 actor/）：$RESUME_FROM_PATH" >&2
+    exit 2
+  fi
+  RESUME_ARGS+=(trainer.resume_from_path="$RESUME_FROM_PATH")
+fi
+
 cd "$REPO_ROOT"
 mkdir -p "$CKPT_DIR" "$ROLLOUT_DIR"
 
 echo "[$EXP_ID] HW=$HW reward=$REWARD_PATH"
 echo "[$EXP_ID] prompt=$MAX_PROMPT_LEN response=$MAX_RESPONSE_LEN bs=$TRAIN_BS x n=$ROLLOUT_N = $((TRAIN_BS * ROLLOUT_N)) seq/step"
-echo "[$EXP_ID] steps=$TOTAL_STEPS save_freq=$SAVE_FREQ test_freq=$TEST_FREQ micro=$MICRO_BS logprob_micro=$LOGPROB_MICRO_BS"
+echo "[$EXP_ID] steps=$TOTAL_STEPS epochs=$TOTAL_EPOCHS save_freq=$SAVE_FREQ test_freq=$TEST_FREQ micro=$MICRO_BS logprob_micro=$LOGPROB_MICRO_BS"
+echo "[$EXP_ID] resume=$RESUME_MODE${RESUME_FROM_PATH:+ from $RESUME_FROM_PATH}"
 echo "[$EXP_ID] ckpt=$CKPT_DIR rollout_dump=$ROLLOUT_DIR util=$ROLLOUT_GPU_MEM"
 
 # 单卡：直接 conda python（不开 uv runtime_env）；lora.merge=True 与 use_v1=False 是 W1 的结论。
@@ -123,11 +150,11 @@ python -m verl.trainer.main_ppo \
   trainer.experiment_name="$EXP_ID" \
   trainer.default_local_dir="$CKPT_DIR" \
   trainer.rollout_data_dir="$ROLLOUT_DIR" \
-  trainer.total_epochs=1 \
+  trainer.total_epochs="$TOTAL_EPOCHS" \
   "${STEPS_ARGS[@]}" \
   trainer.save_freq="$SAVE_FREQ" \
   trainer.test_freq="$TEST_FREQ" \
   trainer.val_before_train=False \
-  trainer.resume_mode=auto \
+  "${RESUME_ARGS[@]}" \
   ray_kwargs.ray_init.runtime_env.py_executable=null \
   "$@"
